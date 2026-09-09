@@ -1,0 +1,34 @@
+{
+  "marzooq": {
+    "bytes": 2490864,
+    "vertices": 29697
+  },
+  "door": {
+    "bytes": 279960,
+    "vertices": 1531
+  },
+  "nightstand": {
+    "bytes": 1566668,
+    "vertices": 4071
+  },
+  "flashlight": {
+    "bytes": 949052,
+    "vertices": 833
+  },
+  "almond": {
+    "bytes": 572484,
+    "vertices": 312
+  },
+  "bat": {
+    "bytes": 975316,
+    "vertices": 13560
+  },
+  "mouse": {
+    "bytes": 1331012,
+    "vertices": 34130
+  },
+  "backrooms": {
+    "bytes": 812908,
+    "vertices": 18995
+  }
+}
