@@ -118,8 +118,8 @@ export function mountUI(host, start) {
 
   const overlay = (s) => {
     let body = '';
-    if (s.mode === 'pause') body = `<section class="overlay-panel pause-panel"><p class="eyebrow">الشريط متوقف</p>
-     <h2>خذ نفس، بيسو.</h2><p>مرزوق ينتظرك. الوقت والبطارية متوقفين.</p>
+    if (s.mode === 'pause' || s.mode === 'ready') body = `<section class="overlay-panel pause-panel"><p class="eyebrow">الشريط متوقف</p>
+     <h2>${s.mode==='ready'?'صحيت... والباب مقفّل.':'خذ نفس، بيسو.'}</h2><p>${s.mode==='ready'?'اضغط كمّل الهروب للتحكم بالماوس. ابحث عن الفلاشلايت على الطاولة.':'مرزوق ينتظرك. الوقت والبطارية متوقفين.'}</p>
      <button class="primary-action" data-do="resume">كمّل الهروب ${icon('Play', 18)}</button><div class="settings-slot"></div>
      <div class="pause-controls"><span><kbd>W A S D</kbd> الحركة</span><span><kbd>SHIFT</kbd> ركض</span>
       <span><kbd>C</kbd> انحناء</span><span><kbd>N</kbd> ذكريات</span><span><kbd>ESC</kbd> إيقاف</span></div>

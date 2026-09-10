@@ -20,8 +20,12 @@ globalThis.Audio=class{constructor(){this.currentTime=0;}play(){return Promise.r
 globalThis.__BESO_ASSETS={};for(const file of readdirSync('public/models').filter(f=>f.endsWith('.glb')))globalThis.__BESO_ASSETS['/models/'+file]='data:model/gltf-binary;base64,'+readFileSync('public/models/'+file).toString('base64');
 const {BesoGame}=await import(pathToFileURL(out).href+'?v='+Date.now());
 let snapshot;const g=new BesoGame({clientWidth:1280,clientHeight:720,appendChild:noop},s=>snapshot=s);
-await g.assets.ready;assert.deepEqual(g.assets.errors,[]);assert.ok(g.marzooq.userData.cat.bones.head);assert.ok(g.marzooq.userData.cat.bones['thigh.L']);
-await g.start();assert.equal(g.mode,'intro');g.skipIntro();assert.equal(g.mode,'play');
+await g.assets.ready;
+const T=await import(three);
+for(const [name,limit] of [['marzooq',3],['flashlight',.31]]){const o=g.assets.model(name,name==='marzooq'?2.02:.3);const size=new T.Box3().setFromObject(o).getSize(new T.Vector3());assert.ok(Math.max(size.x,size.y,size.z)<limit,`${name} has invalid bounds`);}
+const doorSize=new T.Box3().setFromObject(g.assets.model('door',2.58)).getSize(new T.Vector3());assert.ok(doorSize.x>doorSize.z*3,'door must face the room');
+assert.deepEqual(g.assets.errors,[]);assert.ok(g.marzooq.userData.cat.bones.head);assert.ok(g.marzooq.userData.cat.bones['thigh.L']);
+await g.start();assert.equal(g.materials.metal.visible,true);assert.equal(g.mode,'intro');g.skipIntro();assert.equal(g.mode,'ready');g.resume();assert.equal(g.mode,'play');
 g.target={id:'flashlight',object:{visible:true}};g.interact();g.target={id:'key',object:{visible:true}};g.interact();g.changeMode('puzzle');g.puzzle=[];for(const p of ['coffee','clock','door'])g.chooseSymbol(p);assert.equal(g.flags.memorySolved,true);g.closeRead();g.target={id:'door'};g.interact();assert.equal(g.level,'maze');
 g.target={id:'letter',object:{visible:true}};g.interact();g.target={id:'recording'};g.interact();assert.ok(g.flags.evidenceRoom&&g.flags.evidenceMaze);g.closeRead();
 for(const [choice,ending] of [['leave','truth'],['trust','comedy'],['unknown','loop'],['control','secret']]){
