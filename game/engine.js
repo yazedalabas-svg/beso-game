@@ -92,7 +92,10 @@ export class BesoGame {
   // كل عداد مثبت على جدار فعلي. نستخدم موديل صندوق الكهرباء الكامل ببابه ومكوّناته،
   // ونترك الصندوق الإجرائي كبديل فقط لو تعذر تحميل الأصل.
   this.powerBoxes=this.maze.powerPoints.map((p,i)=>{
-   const w=cellToWorld(p.cell),[dx,dz]=p.wall,inset=TILE/2-.22,x=w.x+dx*inset,z=w.z+dz*inset,yaw=Math.atan2(-dx,-dz);
+   // The breaker source is authored with its front along local +X (its cabinet is
+   // only 15 cm deep on X), so rotate +X toward the corridor rather than treating
+   // local +Z as the front.
+   const w=cellToWorld(p.cell),[dx,dz]=p.wall,inset=TILE/2-.32,x=w.x+dx*inset,z=w.z+dz*inset,yaw=Math.atan2(dz,-dx);
    const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=yaw;this.world.add(group);
    const cabinet=this.modelProp('breaker',.78,0,.62,0,group);if(!cabinet){this.mesh(.5,.68,.16,this.materials.metal,0,.96,0,group);this.mesh(.07,.24,.055,surface(0xcc3524),.11,.86,-.09,group);}
    const marker=new THREE.Group();marker.position.set(x-dx*.22,2.18,z-dz*.22);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xe34e35}));const light=new THREE.PointLight(0xff3b24,0,8,2);marker.add(orb,light);marker.visible=false;this.world.add(marker);
