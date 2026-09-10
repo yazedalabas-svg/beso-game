@@ -2,9 +2,32 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
 export const assetURL=p=>globalThis.__BESO_ASSETS?.[p]||p;
-const names=['marzooq','door','nightstand','flashlight','almond','bat','mouse','backrooms'];
+const names=['marzooq','door','nightstand','flashlight','almond','bat','mouse','backrooms',
+ 'wallpaper','fluorescent','breaker','camera','battery','energy','backpack','bed','locker','filing','boxes','fan','monitor','warnings','mushroom'];
+// صفحات Artifact تمنع fetch/XHR تمامًا (connect-src 'none')، و GLTFLoader.load يستعمل fetch.
+// فنفكّ الـ data URI محليًا ونستخدم parse — بدون أي طلب شبكة.
+function decodeDataURI(uri){
+ const comma=uri.indexOf(',');const binary=atob(uri.slice(comma+1));const bytes=new Uint8Array(binary.length);
+ for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes.buffer;
+}
+// GLTFLoader يختار ImageBitmapLoader (وهو يستعمل fetch) متى ما كان createImageBitmap موجودًا،
+// والقرار يصير داخل parse() لا داخل الباني. نخفيه أثناء الاستدعاء المتزامن فقط، فيستعمل
+// TextureLoader اللي يحمّل الصور عبر <img> — و data: مسموحة تحت سياسة صفحات Artifact.
+function parseWithoutFetch(buffer){
+ return new Promise((resolve,reject)=>{
+  const native=globalThis.createImageBitmap;
+  const hidden=native!==undefined&&delete globalThis.createImageBitmap;
+  try{new GLTFLoader().parse(buffer,'',resolve,reject);}
+  finally{if(hidden)globalThis.createImageBitmap=native;}
+ });
+}
+async function loadModel(path){
+ const source=assetURL(path);
+ const buffer=source.startsWith('data:')?decodeDataURI(source):await (await fetch(source)).arrayBuffer();
+ return parseWithoutFetch(buffer);
+}
 export class GameAssets {
- constructor(){this.models={};this.errors=[];this.ready=Promise.all(names.map(async name=>{try{const gltf=await new GLTFLoader().loadAsync(assetURL(`/models/${name}.glb`));this.models[name]=gltf.scene;}catch(e){this.errors.push(name);console.warn('Model unavailable',name,e);}}));}
+ constructor(){this.models={};this.errors=[];this.ready=Promise.all(names.map(async name=>{try{const gltf=await loadModel(`/models/${name}.glb`);this.models[name]=gltf.scene;}catch(e){this.errors.push(name);console.warn('Model unavailable',name,e);}}));}
  model(name,height){
   const source=this.models[name];if(!source)return null;
   const scene=clone(source);

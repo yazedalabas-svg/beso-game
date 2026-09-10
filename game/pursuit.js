@@ -2,7 +2,7 @@ import {pathfind,cellToWorld,worldToCell,lineOfSight,mazeSolid} from './logic.js
 const same=(a,b)=>a&&b&&a[0]===b[0]&&a[1]===b[1];
 export function createPursuer(cell){const p=cellToWorld(cell);return {...p,cell:[...cell],state:'patrol',path:[],last:null,memory:0,energy:100,speed:0,yaw:0,step:0,phase:0,searches:0};}
 export function advancePursuer(e,maze,player,dt,options){
- const {random,lit,sprinting,quiet,grace,safe}=options;
+ const {random,lit,sprinting,quiet,grace,safe,nearGoal=false}=options;
  const distance=Math.hypot(player.x-e.x,player.z-e.z),los=distance<24&&lineOfSight(maze.grid,e,player);
  const facing=(-Math.sin(e.yaw)*(player.x-e.x)-Math.cos(e.yaw)*(player.z-e.z))/Math.max(.001,distance);
  const sees=!grace&&!safe&&los&&distance<(lit?22:quiet?3.4:6.5)&&(lit||distance<2.6||facing>-.05);
@@ -23,11 +23,11 @@ export function advancePursuer(e,maze,player,dt,options){
   }
   e.path=pathfind(maze.grid,e.cell,target).slice(1);
  }
- const running=e.state==='chase'&&sees&&distance>1.8&&e.energy>18&&!e.tired;
- e.energy=Math.max(0,Math.min(100,e.energy+(running?-25:12)*dt));
+ const running=e.state==='chase'&&sees&&distance>1.55&&e.energy>(nearGoal?8:18)&&!e.tired;
+ e.energy=Math.max(0,Math.min(100,e.energy+(running?-(nearGoal?18:25):12)*dt));
  if(e.energy<=18)e.tired=true;if(e.energy>65)e.tired=false;
  const direct=sees&&same(worldToCell(e),worldToCell(player));
- const desired=e.path.length||direct?(running&&!e.tired?3.75:e.state==='chase'?2.35:1.45):0;
+ const desired=e.path.length||direct?(running&&!e.tired?(nearGoal?5.15:3.75):e.state==='chase'?(nearGoal?3.1:2.35):1.45):0;
  e.speed+=Math.max(-dt*7,Math.min(dt*4,desired-e.speed));
  let travelled=0;
  if(e.path.length||direct){const target=direct?player:cellToWorld(e.path[0]),dx=target.x-e.x,dz=target.z-e.z,d=Math.hypot(dx,dz),step=Math.min(d,e.speed*dt);

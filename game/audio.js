@@ -20,6 +20,12 @@ export class Soundscape {
  door(){this.tone(72,.8,.2,'sawtooth');this.noiseBurst(.5,.35,400);}
  pickup(){this.tone(620,.13,.09);setTimeout(()=>this.tone(820,.15,.07),90);}
  scare(reduced){this.noiseBurst(reduced?.24:.65,reduced?.2:.62,1900);this.tone(83,.8,reduced?.16:.4,'sawtooth');}
+ blackout(){this.noiseBurst(.7,.32,180);this.tone(48,1.1,.20,'sawtooth');setTimeout(()=>this.tone(31,.7,.12,'square'),160);}
+ powerRestore(){this.tone(88,.22,.09,'square');setTimeout(()=>this.tone(176,.35,.08,'sine'),160);this.noiseBurst(.18,.08,1600);}
+ creature(kind){if(kind==='bat'){this.noiseBurst(.42,.38,3200);this.tone(1160,.24,.16,'sawtooth');}else{this.noiseBurst(.31,.24,2100);this.tone(510,.16,.11,'square');}}
+ vending(){this.tone(180,.12,.06,'square');setTimeout(()=>this.tone(132,.18,.08,'square'),130);setTimeout(()=>this.noiseBurst(.22,.18,540),300);}
+ locker(){this.tone(92,.7,.12,'sawtooth');this.noiseBurst(.45,.24,1200);}
+ event(id){if(id==='blackout')return this.blackout();if(id==='cctv'){this.noiseBurst(.55,.18,2400);this.tone(64,.9,.08,'square');}else if(id==='false-exit'){this.door();setTimeout(()=>this.tone(230,.5,.06,'triangle'),350);}else if(id==='lounge'){this.tone(220,.35,.04);this.tone(277,.5,.03);}}
  voice(name){if(this.paused)return;this.stopVoice();const a=new Audio(assetURL(`/audio/${name}.mp3`));a.volume=.8*this.volume;a.muted=this.muted;this.voices.add(a);a.onended=()=>this.voices.delete(a);a.onerror=()=>this.voices.delete(a);a.play().catch(()=>{});}
  stopVoice(){for(const a of this.voices){a.pause();a.currentTime=0;}this.voices.clear();}
  listener(pos,yaw,pitch=0){if(!this.ctx)return;const l=this.ctx.listener;if(l.positionX){l.positionX.value=pos.x;l.positionY.value=pos.y;l.positionZ.value=pos.z;l.forwardX.value=-Math.sin(yaw)*Math.cos(pitch);l.forwardY.value=Math.sin(pitch);l.forwardZ.value=-Math.cos(yaw)*Math.cos(pitch);l.upX.value=0;l.upY.value=1;l.upZ.value=0;}}
@@ -28,7 +34,13 @@ export class Soundscape {
   if(!this.ctx)return;const c=this.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.03);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(this.master);this.effects.add(o);o.onended=()=>{this.effects.delete(o);o.disconnect();g.disconnect();};o.start(t);o.stop(t+duration+.01);
  }
  stopEffects(){for(const o of this.effects){try{o.stop();}catch{}}this.effects.clear();}
- cinematic(id){this.stopEffects();this.hum?.gain.setTargetAtTime(.004,this.ctx?.currentTime||0,.2);if(id==='comedy'){[392,392,440,392,523,494,392,392,440,392,587,523].forEach((f,i)=>this.note(f,.38,.065,i*.34,'triangle'));}else if(id==='truth'){[196,247,294,392].forEach((f,i)=>this.note(f,4,.035,i*1.5));this.noiseBurst(2,.09,1800);}else if(id==='secret'){[110,116.5,220,233].forEach((f,i)=>this.note(f,9,.018,i*.25));}else{this.note(49,12,.055);this.note(51,12,.04);this.door();}}
+ cinematic(id){
+  this.stopEffects();this.hum?.gain.setTargetAtTime(.003,this.ctx?.currentTime||0,.2);
+  const bass=id==='truth'?[73.4,73.4,87.3,65.4]:id==='comedy'?[98,123.5,146.8,110]:id==='secret'?[82.4,110,123.5,164.8]:[55,58.3,55,51.9];
+  for(let i=0;i<(id==='truth'?88:44);i++){const delay=i*.5;this.note(bass[i%4],.38,.026,delay,'triangle');if(i%4===0)this.note(bass[i%4]*2,.85,.017,delay,'sine');}
+ }
+ timeStop(){this.tone(520,.65,.09,'sawtooth');this.note(55,1.3,.09);this.noiseBurst(.35,.12,2100);}
+ impact(color,reduced=false){this.noiseBurst(.10,reduced?.055:.12,850);this.tone(color==='gold'?100:145,.12,reduced?.025:.06,'triangle');}
  update(dt,threat,stage,sprinting=false,pos={x:0,z:0}){
   if(!this.ctx)return;this.hum.gain.setTargetAtTime(stage==='maze'?.028:.008,this.ctx.currentTime,.3);this.clock+=dt;this.breathClock+=dt;this.ambientClock+=dt;
   if(threat>.42&&this.clock>.55+(1-threat)*.75){this.tone(46,.12,.03+threat*.055);this.note(52,.1,.03,.15);this.clock=0;}

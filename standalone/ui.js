@@ -80,7 +80,7 @@ export function mountUI(host, start) {
    </section>
    <aside class="title-stamp" aria-hidden="true"><span>ROOM</span><strong>017</strong><span>DO NOT OPEN</span></aside>
    <footer class="title-footer"><div class="control-strip"><span><kbd>W A S D</kbd> تحرّك</span>
-    <span>${icon('ScanLine', 16)} الماوس للنظر</span><span><kbd>E</kbd> تفاعل</span><span><kbd>F</kbd> إضاءة</span></div>
+    <span>${icon('ScanLine', 16)} الماوس للنظر</span><span><kbd>E</kbd> تفاعل</span><span><kbd>F</kbd> إضاءة</span><span><kbd>B</kbd> الشنطة</span></div>
     <span class="ending-count">${s.unlocked.length} / 4 نهايات مكتشفة</span></footer>`;
 
   const introScreen = (s) => `
@@ -89,7 +89,9 @@ export function mountUI(host, start) {
    <div class="intro-caption">قبل ما تفيق...</div>
    <button class="text-action skip-action" data-do="skipIntro">تخطّ المشهد ${icon('ChevronLeft', 16)}</button>`;
 
-  const cinemaScreen = (s) => `<div class="cinema-bars" aria-hidden="true"></div><div class="intro-caption">${esc(s.ending?.label)} · ${Math.min(100,Math.floor(s.cinemaTime/14*100))}%</div><button class="text-action skip-action" data-do="finishCinema">تخطّ المشهد ${icon('ChevronLeft',16)}</button><button class="text-action cinema-pause" data-do="pause">إيقاف مؤقت ${icon('Pause',16)}</button>`;
+  const cinemaScreen = (s) => `<div class="cinema-bars" aria-hidden="true"></div><div class="jojo-fx ${esc(s.cinemaFx)}" aria-hidden="true"></div><div class="manga-sfx" aria-hidden="true">${esc(s.cinemaGraphic)}</div>${s.cinemaCard?`<div class="jojo-card">${esc(s.cinemaCard)}<span>←</span></div>`:``}<div class="shot-caption">${esc(s.cinemaCaption)}</div><div class="intro-caption">${esc(s.ending?.label)} · ${Math.min(100,Math.floor(s.cinemaTime/s.cinemaDuration*100))}%</div><button class="text-action skip-action" data-do="finishCinema">تخطّ المشهد ${icon('ChevronLeft',16)}</button><button class="text-action cinema-pause" data-do="pause">إيقاف مؤقت ${icon('Pause',16)}</button>`;
+
+  const eventScreen = (s) => `<div class="cinema-bars event-bars" aria-hidden="true"></div><div class="event-noise ${esc(s.eventId)}" aria-hidden="true"></div><div class="intro-caption">${s.eventId==='blackout'?'انقطاع الكهرباء':s.eventId==='cctv'?'تسجيل المراقبة':s.eventId==='lounge'?'استراحة غير آمنة':'باب EXIT'}</div><button class="text-action skip-action" data-do="skipEvent">تخطّ المشهد ${icon('ChevronLeft',16)}</button>`;
 
   const playScreen = (s) => `
    <header class="hud-top"><div class="objective"><span class="eyebrow">${s.level === 'room' ? '٠١ / الغرفة المظلمة' : '٠٢ / خلف الباب'}</span>
@@ -98,14 +100,16 @@ export function mountUI(host, start) {
      <button aria-label="إيقاف اللعبة" data-do="pause">${icon('Pause', 18)}</button></div></header>
    <div class="crosshair ${s.target ? 'targeted' : ''}" aria-hidden="true"></div>
    ${s.target ? `<div class="interaction-prompt"><kbd>E</kbd>${esc(s.target)}</div>` : ''}
+   ${s.powerOut&&s.powerHint?`<div class="power-compass"><i style="transform:rotate(${s.powerHint.angle}rad)">↑</i><span>عداد الكهرباء · ${s.powerHint.distance}م</span><small>يرجع تلقائيًا بعد ${Math.ceil(s.powerHint.seconds/60)}د</small></div>`:''}
    <div class="danger-cue js-danger" hidden>${icon('Footprints', 18)}<span class="js-danger-text"></span><span></span></div>
    <footer class="hud-bottom">
     <div class="inventory"><span class="${s.flags.keyFound ? 'collected' : ''}">${icon('KeyRound', 18)}${s.flags.keyFound ? 'مفتاح صدئ' : '—'}</span>
      <span>${icon('BookOpen', 18)}${Number(s.flags.evidenceRoom) + Number(s.flags.evidenceMaze)} / 2 أدلة</span>
+     <span class="${s.flags.backpack?'collected':''}">${icon('Coffee',16)}${s.flags.backpack?`شنطة B · ${(s.flags.inventory?.energy||0)+(s.flags.inventory?.almond||0)}`:'الشنطة —'}</span>
      ${s.checkpoint ? `<span class="safe-label">${icon('ShieldCheck', 16)}محفوظ</span>` : ''}</div>
     <div class="vitals"><div class="battery-head">${icon('Flashlight', 18)}<span class="js-batt"></span><kbd>F</kbd></div>
      <div class="battery-meter js-battmeter"><i></i></div><div class="stamina-meter"><i></i></div>
-     <small>SHIFT · ركض قصير / C · انحناء / N · دليل النهايات</small></div></footer>`;
+     <small>SHIFT · ركض / C · انحناء / B · الشنطة / N · الدفتر</small></div></footer>`;
 
   const touchScreen = () => `
    <div class="look-pad"></div>
@@ -140,12 +144,13 @@ export function mountUI(host, start) {
       ${!s.flags.memorySolved ? `<button data-do="clearPuzzle">امسح الترتيب ${icon('RotateCcw', 15)}</button>` : ''}</div></section>`;
 
     else if (s.mode === 'read') {
-      const isPhoto = !!s.read?.id?.startsWith('photo');
+      const isPhoto = !!s.read?.id?.startsWith('photo'),isInventory=s.read?.id==='inventory';
       body = `<section class="overlay-panel read-panel ${isPhoto ? 'photo-read' : ''}">
-       <p class="eyebrow">${s.read?.id === 'recording' ? 'صوت قديم / دليل ٠٢' : s.read?.id === 'journal' ? 'الأشياء اللي ما تنسى' : 'ذاكرة / دليل ٠١'}</p>
+       <p class="eyebrow">${isInventory?'شنطة بيسو':s.read?.id === 'recording' ? 'صوت قديم / دليل ٠٢' : s.read?.id === 'journal' ? 'الأشياء اللي ما تنسى' : 'ذاكرة / دليل ٠١'}</p>
        <h2>${esc(s.read?.title)}</h2>
        ${isPhoto && !s.read.back ? `<div class="memory-photo"><img src="${assetURL('/textures/memory.png')}" alt="بيسو ومرزوق في صورة قديمة يشربان القهوة"><span>قبل كل هذا.</span></div>` : ''}
        <p class="clue-text">${esc(s.read?.body)}</p>
+       ${isInventory?`<div class="bag-grid"><button data-item="energy" ${s.flags.inventory?.energy?'':'disabled'}><b>مشروب طاقة × ${s.flags.inventory?.energy||0}</b><span>يعيد ٦٥ ستامينا</span></button><button data-item="almond" ${s.flags.inventory?.almond?'':'disabled'}><b>ماء اللوز × ${s.flags.inventory?.almond||0}</b><span>يعيد ٢٨ ثانية للفلاشلايت</span></button><div><b>الفطر</b><span>يُستخدم فور التقاطه · ${s.flags.mushrooms.length} مأكول</span></div><div><b>هيبة بيسو</b><span>${s.flags.dignity}%</span></div></div>`:''}
        ${s.read?.id === 'journal' ? `<div class="journal-list">${JOURNAL.map((p, i) =>
         `<div>${s.flags.photos.includes(p.id) ? `<b>${p.title}</b><p>${p.body}</p>` : `<b>ذكرى ${i + 1}</b><p>لم تفحص هذه الصورة بعد.</p>`}</div>`).join('') +
         `<div><b>الرسالة خلف الصورة</b><p>${s.flags.evidenceRoom ? '«لازم بيسو ينام قبل ما أقفل عليه...»' : 'لم تجمعها بعد.'}</p></div>` +
@@ -156,7 +161,7 @@ export function mountUI(host, start) {
 
     else if (s.mode === 'caught' && s.caughtTime > 1.3) body = `<section class="overlay-panel caught-panel">
      <p class="eyebrow">مسكك / المحاولة ${s.deaths + 1}</p><h2>قلت لك لا تطلع.</h2>
-     <p>«مرة ثانية يا بيسو؟ حرام عليك ركض شوي.»</p>
+     <p>«أنت سريع... بس الممرات معي.»</p>
      <p class="muted-note">اكسر خط النظر عند الزوايا. إطفاء الفلاشلايت يصعّب اكتشافك.</p>
      <button class="primary-action" data-do="retry">مرّة أخيرة... يمكن ${icon('RotateCcw', 18)}</button>
      <span class="checkpoint-note">${icon('ShieldCheck', 15)}ترجع لآخر نقطة آمنة. الأدلة محفوظة.</span></section>`;
@@ -165,10 +170,10 @@ export function mountUI(host, start) {
      <h2>هالمرة... أنت تختار.</h2><p>كل باب له مشهد ونهاية مختلفة. تقدر ترجع وتجرّب قرار ثاني بعد المشهد.</p>
      <div class="evidence-summary">${icon('BookOpen',18)}${s.flags.evidenceRoom?'✓':'○'} الرسالة · ${s.flags.evidenceMaze?'✓':'○'} التسجيل</div>
      <div class="ending-options">
-      <button class="choice-card" data-decide="leave" ${both?'':'disabled'}>${icon('DoorOpen',25)}<span><b>١ · اخرج بالدليلين</b><small>${both?'الهروب الحقيقي · جاهز':!s.flags.evidenceRoom?'خذ الرسالة عند مدخل المتاهة ثم التسجيل قرب الاستراحة':'بقي التسجيل قرب الاستراحة'}</small></span></button>
-      <button class="choice-card" data-decide="trust">${icon('Coffee',25)}<span><b>٢ · افتح باب الحفلة</b><small>النهاية الكوميدية · متاحة بدون شروط</small></span></button>
-      <button class="choice-card" data-decide="unknown">${icon('Eye',25)}<span><b>٣ · ادخل الباب المجهول</b><small>نهاية الرعب المفتوح · على مسؤوليتك يا بيسو</small></span></button>
-      <button class="choice-card" data-decide="control" ${both?'':'disabled'}>${icon('KeyRound',25)}<span><b>٤ · واجهه في غرفة التحكم</b><small>${both?'الدليلان يفتحان سر التجربة':'مقفلة حتى تجمع الرسالة والتسجيل'}</small></span></button>
+      <button class="choice-card" data-decide="leave" ${both?'':'disabled'}>${icon('DoorOpen',25)}<span><b>١ · اخرج بالدليلين</b><small>${both?'جاهز · مواجهة بيسو ومرزوق':!s.flags.evidenceRoom?'خذ الرسالة عند مدخل المتاهة ثم التسجيل قرب الاستراحة':'بقي التسجيل قرب الاستراحة'}</small></span></button>
+      <button class="choice-card" data-decide="trust">${icon('Coffee',25)}<span><b>٢ · اجلس للمصالحة</b><small>ماء اللوز ينتظر على الطاولة</small></span></button>
+      <button class="choice-card" data-decide="unknown">${icon('Eye',25)}<span><b>٣ · اسمع مرزوق للنهاية</b><small>مواجهة هادئة عند الباب</small></span></button>
+      <button class="choice-card" data-decide="control" ${both?'':'disabled'}>${icon('KeyRound',25)}<span><b>٤ · اكشف سر الحماية</b><small>${both?'غرفة المراقبة كشفت الحقيقة':'مقفلة حتى تجمع الرسالة والتسجيل'}</small></span></button>
      </div><button class="text-action" data-do="closeRead">ارجع واجمع الأدلة ${icon('ArrowLeft',16)}</button></section>`;}
 
     else if (s.mode === 'ending' && s.ending) body = `<section class="overlay-panel ending-panel ending-${s.ending.tone}">
@@ -189,6 +194,7 @@ export function mountUI(host, start) {
       (s.mode === 'title' ? titleScreen(s) : '') +
       (s.mode === 'intro' ? introScreen(s) : '') +
       (s.mode === 'cinematic' ? cinemaScreen(s) : '') +
+      (s.mode === 'event' ? eventScreen(s) : '') +
       (s.mode === 'loading' ? '<div class="loading-screen"><p>نجهّز الموديلات...</p></div>' : '') +
       (s.mode === 'play' ? playScreen(s) : '') +
       (s.mobile && s.mode === 'play' ? touchScreen() : '') +
@@ -233,21 +239,22 @@ export function mountUI(host, start) {
   const onSnapshot = (s) => {
     snap = s;
     shell.dataset.mode = s.mode;
-    shell.className = `game-shell ${s.settings.reduced ? 'reduced' : ''} ${s.mode === 'caught' && s.caughtTime < 0.8 ? 'scare' : ''}`;
+    shell.className = `game-shell ${s.settings.reduced ? 'reduced' : ''} ${s.mode === 'caught' && s.caughtTime < 0.8 ? 'scare' : ''} ${s.miniScare?'mini-scare '+s.miniScare:''} ${s.powerOut?'power-out':''}`;
     const sig = [s.mode, s.level, s.target, s.read?.id, s.read?.back, s.puzzle.join(), s.puzzleMessage,
       s.flags.keyFound, s.flags.memorySolved, s.flags.flashlight, s.flags.evidenceRoom, s.flags.evidenceMaze,
       s.mobile, s.hasSave, s.unlocked.length, s.ending?.id, s.introTime > 6.3, s.caughtTime > 1.3,
-      settingsOpen, s.checkpoint,Math.floor(s.cinemaTime||0)].join('|');
+      s.cinemaFx,s.cinemaGraphic,s.cinemaCard,s.cinemaCaption,s.eventId,Math.floor(s.eventTime||0),s.miniScare,s.powerOut,s.powerHint?.distance,Math.round((s.powerHint?.angle||0)*10),s.flags.backpack,s.flags.inventory?.energy,s.flags.inventory?.almond,s.flags.mushrooms.length,settingsOpen, s.checkpoint,Math.floor(s.cinemaTime||0)].join('|');
     if (sig !== signature) { signature = sig; render(s); }
     paint(s);
   };
 
   // ---- الأحداث ----
   layer.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-do],[data-symbol],[data-decide]');
+    const el = e.target.closest('[data-do],[data-symbol],[data-decide],[data-item]');
     if (!el) return;
     if (el.dataset.symbol) return act('chooseSymbol', el.dataset.symbol);
     if (el.dataset.decide) return act('decide', el.dataset.decide);
+    if (el.dataset.item) return act('useItem',el.dataset.item);
     const cmd = el.dataset.do;
     if (cmd === 'start') return act('start', false);
     if (cmd === 'continue') return act('start', true);
