@@ -70,6 +70,8 @@ export class BesoGame {
   this.marzooq.userData.skull=new THREE.Object3D();
  }
  modelProp(name,height,x,y,z,parent=this.world){const o=this.assets.model(name,height);if(o){o.position.set(x,y,z);parent.add(o);}return o;}
+ // ورق حائط أصفر مقلّم — نسيج مأخوذ من حزمة Rec Room، يعطي غرفة المراقبة طابع "خلف الواقع" مختلف عن الجدران العادية
+ wallpaperMaterial(){if(!this.wallpaperTex){const t=new THREE.TextureLoader().load(assetURL('/textures/wallpaper.jpg'));t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);t.anisotropy=4;this.wallpaperTex=t;this.wallpaperMat=new THREE.MeshStandardMaterial({map:t,roughness:.92});}return this.wallpaperMat;}
  addRoomModels(){
   this.modelProp('nightstand',1.25,2.85,0,-2.75);this.addCollider(2.85,-2.75,1.05,.9);
   const bed=this.modelProp('bed',.72,-2.65,0,1.15);if(bed){bed.rotation.y=Math.PI/2;bed.visible=true;}
@@ -80,16 +82,20 @@ export class BesoGame {
  addMazeContent(){
   const at=(cell,dx=0,dz=0)=>{const w=cellToWorld(cell);return [w.x+dx,w.z+dz];};
   const start=at(this.maze.start,.85,.15),bag=this.modelProp('backpack',.62,start[0],0,start[1]);if(bag){bag.rotation.y=-.7;this.item('backpack','خذ الشنطة',[start[0],.55,start[1]],bag);}
+  const bunnyAt=at(this.maze.start,-.9,.55),bunny=this.modelProp('rr-plush-bunny',.34,bunnyAt[0],0,bunnyAt[1]);if(bunny){bunny.rotation.y=2.1;this.item('bunny','قرّب من الدبدوب',[bunnyAt[0],.2,bunnyAt[1]],bunny);}
   this.maze.mushrooms.forEach((p,i)=>{if(this.flags.mushrooms.includes(i))return;const [x,z]=at(p,(i%2?.72:-.72),0);const o=this.modelProp('mushroom',.28,x,0,z);if(o){o.traverse(n=>{if(n.isMesh){n.material.color?.setHex(0x6b3f84);n.material.emissive?.setHex(0x17091d);}});this.item(`mushroom${i}`,'كل الفطر · يعيد الستامينا',[x,.24,z],o);}});
   this.powerBoxes=this.maze.powerPoints.map((p,i)=>{const [x,z]=at(p,(i%2?.92:-.92),0);const o=this.modelProp('breaker',1.18,x,0,z);if(o)o.rotation.y=i%2?Math.PI/2:-Math.PI/2;const marker=new THREE.Group();marker.position.set(x,2.25,z);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xe34e35}));const light=new THREE.PointLight(0xff3b24,0,8,2);marker.add(orb,light);marker.visible=false;this.world.add(marker);this.item(`breaker${i}`,'عداد الكهرباء',[x,1.15,z],o);return {o,marker,light,pos:new THREE.Vector3(x,1.1,z)};});
   const [lx,lz]=at(this.maze.lounge);const vending=this.mesh(.95,2.05,.65,surface(0x313843),lx+.8,1.03,lz);this.mesh(.69,1.05,.03,new THREE.MeshBasicMaterial({color:0x5e91a4}),lx+.8,1.38,lz-.34);const vSign=this.sign('استراحة الموظفين',1.5,.28,'#27374a','#bddbe2');vSign.position.set(lx,2.25,lz-1.15);this.world.add(vSign);this.item('vending','جرّب آلة البيع',[lx+.8,1.2,lz-.4],vending);
   const locker=this.modelProp('locker',2.15,lx-1.05,0,lz+.5);if(locker){locker.rotation.y=Math.PI/2;this.item('locker','اختبئ في الخزانة',[lx-1.05,1,lz+.5],locker);}
   const chair=this.mesh(.55,.1,.55,this.materials.wood,lx-.15,.5,lz+.65);this.mesh(.08,.65,.08,this.materials.metal,lx-.15,.18,lz+.65);this.addCollider(lx-.15,lz+.65,.65,.65);
+  const tv=this.modelProp('rr-tv-table',1.42,lx+.75,0,lz+1.35);if(tv){tv.rotation.y=-.5;this.item('tv','تلفزيون قديم مطفي',[lx+.75,1,lz+1.35],tv);}
   const [cx,cz]=at(this.maze.control);const monitor=this.modelProp('monitor',1.25,cx,0,cz+.7);if(monitor){monitor.rotation.y=Math.PI;this.item('monitor','شاهد تسجيل الكاميرا',[cx,1.2,cz+.45],monitor);}const cam=this.modelProp('camera',.48,cx-1.15,2.15,cz-.7);if(cam)cam.rotation.y=.75;
   const controlSign=this.sign('غرفة المراقبة',1.45,.3,'#191c22','#b7c9c5');controlSign.position.set(cx,2.2,cz-1.15);this.world.add(controlSign);
+  this.mesh(2.3,2.4,.05,this.wallpaperMaterial(),cx,1.2,cz-1.05);
   const drinkCells=[this.maze.rooms[0],this.maze.rooms[2],this.maze.evidence];drinkCells.forEach((p,i)=>{const [x,z]=at(p,i%2?.5:-.5,.45);const name=i===1?'almond':'energy',o=this.modelProp(name,.23,x,0,z);if(o)this.item(`drink${i}`,name==='almond'?'ماء لوز · خزّنه في الشنطة':'مشروب طاقة · خزّنه في الشنطة',[x,.25,z],o);});
   const falseCell=this.maze.rooms[0],f=at(falseCell,-1.05,0),fake=this.modelProp('door',2.45,f[0],0,f[1]);if(fake){fake.rotation.y=Math.PI/2;const s=this.sign('EXIT',.72,.28,'#295333','#d8f4d1');s.position.set(f[0],2.35,f[1]-.15);this.world.add(s);this.item('falseExit','افتح مخرج EXIT',[f[0],1.3,f[1]],fake);}
-  this.maze.rooms.forEach((p,i)=>{const [x,z]=at(p);const prop=this.modelProp(i===0?'boxes':i===1?'filing':'fan',i === 2 ? 0.65 : 1.35,x+(i-1)*.8,i===2?2.15:0,z-.75);if(prop)prop.rotation.y=i*.8;const lamp=this.modelProp('fluorescent',.18,x,2.68,z);if(lamp)lamp.rotation.z=Math.PI/2;});
+  const frame=this.modelProp('rr-door-frame',2.62,f[0],0,f[1]);if(frame)frame.rotation.y=Math.PI/2;
+  this.maze.rooms.forEach((p,i)=>{const [x,z]=at(p);const prop=this.modelProp(i===0?'boxes':i===1?'filing':'fan',i === 2 ? 0.65 : 1.35,x+(i-1)*.8,i===2?2.15:0,z-.75);if(prop)prop.rotation.y=i*.8;const lamp=this.modelProp('fluorescent',.18,x,2.68,z);if(lamp)lamp.rotation.z=Math.PI/2;if(i===1){const rail=this.modelProp('rr-rail-post',1.1,x-.9,0,z+.7);if(rail)rail.rotation.y=1.4;}});
   this.scareZones=this.maze.scareCells.map((p,i)=>{const [x,z]=at(p);const kind=i%2?'mouse':'bat',o=this.modelProp(kind,kind==='bat'?.2:.18,x,kind==='bat'?2.05:0,z);if(o)o.visible=false;return {kind,o,pos:new THREE.Vector3(x,kind==='bat'?1.85:.12,z),triggered:this.flags.events.includes(`scare${i}`),id:i};});
   const warnCell=this.maze.rooms[2],wp=at(warnCell,1.05,-.8),warning=this.modelProp('warnings',.8,wp[0],.65,wp[1]);if(warning)warning.rotation.y=-Math.PI/2;
  }
@@ -112,6 +118,7 @@ export class BesoGame {
   this.lights=Array.from({length:6},()=>{const light=new THREE.PointLight(0xe4e2a7,2.45,8,1.8);this.world.add(light);return light;});this.poweredLights=[...this.lights];
   this.maze.batteries.forEach((p,i)=>{if(this.flags.batteries.includes(i))return;const w=cellToWorld(p);const battery=this.modelProp('battery',.24,w.x+.75,0,w.z)||this.mesh(.12,.24,.12,surface(0x8d6b29),w.x+.75,.14,w.z);this.item('battery'+i,'بطارية نادرة · +٢٠ ثانية',[w.x+.75,.3,w.z],battery);});
   const cp=cellToWorld(this.maze.checkpoint);const cpSign=this.sign('استراحة · نقطة حفظ',1.7,.3,'#263f30','#bde1b5');cpSign.position.set(cp.x,1.65,cp.z+.6);this.world.add(cpSign);this.mesh(1.5,.08,.5,M.wood,cp.x,.52,cp.z+.6);const cpLight=new THREE.PointLight(0x75b092,1.6,5);cpLight.position.set(cp.x,2,cp.z);this.world.add(cpLight);this.poweredLights.push(cpLight);
+  this.modelProp('backrooms',.35,cp.x,2.55,cp.z);
   const ep=cellToWorld(this.maze.evidence);const recorder=this.mesh(.31,.15,.22,M.metal,ep.x,.3,ep.z);this.mesh(.04,.04,.01,new THREE.MeshBasicMaterial({color:0xcc542e}),ep.x,.32,ep.z-.116);this.item('recording','شغّل التسجيل',[ep.x,.4,ep.z],recorder);
   const nearRoute=pathfind(this.maze.grid,this.maze.checkpoint,this.maze.evidence);nearRoute.filter((_,i)=>i%3===0).forEach(p=>{const w=cellToWorld(p),s=this.sign('صوت مرزوق ←',.8,.2,'#574e31','#c5b879');s.rotation.x=-Math.PI/2;s.position.set(w.x,.021,w.z);this.world.add(s);});
   const ex=cellToWorld(this.maze.exit);this.exitSign=this.sign('خروج ؟',1.8,.55,'#283f31','#c0d9a2');this.exitSign.position.set(ex.x,2,ex.z);this.world.add(this.exitSign);this.mesh(1.1,.02,1.1,surface(0x466b4a),ex.x,.015,ex.z);const exitLight=new THREE.PointLight(0x85bc82,4,7);exitLight.position.set(ex.x,2,ex.z);this.world.add(exitLight);this.poweredLights.push(exitLight);this.item('exit','الباب الأخير',[ex.x,1.4,ex.z]);
@@ -163,6 +170,8 @@ export class BesoGame {
   else if(t.id==='monitor'){if(!this.flags.events.includes('cctv'))this.beginEvent('cctv',7);else this.say('التسجيل انتهى عند لحظة ظهور مرزوق خلف الكاميرا.',4);}
   else if(t.id==='vending'){if(this.flags.events.includes('vending'))this.say('الآلة أخذت قرارها.',3);else{this.flags.events.push('vending');this.sounds.vending();if(this.random()>.45){this.flags.battery=Math.min(MAX_BATTERY,this.flags.battery+10);this.say('نزلت بطارية بدل المشروب. تمشي.',4);}else{this.flags.dignity=Math.max(0,this.flags.dignity-8);this.triggerScare('mouse',t.object.position,'vending-rat');this.say('طلع فأر. الآلة واضحة في سياستها.',4);}this.save();}}
   else if(t.id==='locker'){this.sounds.locker();this.flags.dignity=Math.max(0,this.flags.dignity-4);if(this.enemy){this.enemy.last=worldToCell(this.player);this.enemy.state='investigate';this.enemy.path=[];}this.say('صرير الخزانة فضح المكان كله.',4);}
+  else if(t.id==='bunny'){const seen=this.flags.events.includes('bunny');if(!seen)this.flags.events.push('bunny');this.sounds.voice(seen?'bunny-again':'bunny');this.say(seen?'بيسو: «للحين هنا يا صديقي.»':'بيسو: «دبدوب؟ هنا؟ ...ليش ما تفاجئني.»',5);}
+  else if(t.id==='tv'){this.sounds.voice('tv');this.say('بيسو: «حتى التلفزيون مقطوع عنه الكهربا.»',4);}
   else if(t.id==='falseExit'){this.beginEvent('false-exit',5);}
   else if(t.id==='letter'){this.flags.evidenceRoom=true;t.object.visible=false;this.sounds.pickup();this.say('الدليل الأول معك. بقي التسجيل قرب الاستراحة للوصول للهروب الحقيقي.',7);this.save();}
   else if(t.id==='recording'){this.flags.evidenceMaze=true;this.read={id:'recording',title:'تسجيل ٠١٧ · لا تثق بالباب',body:'«بيسو، أنا حطّيت لك المنوّم وقفلت عليك... الممرات طلبت واحد بدالي. قلت لنفسي إني أحميك، بس كنت أحمي نفسي.»\n[تشويش]\n«رقم التجربة: ب.س.و. صاحب المشروع لا يتذكر.»'};this.changeMode('read');this.save();this.sounds.voice('recording');}

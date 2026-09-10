@@ -3,7 +3,8 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
 export const assetURL=p=>globalThis.__BESO_ASSETS?.[p]||p;
 const names=['marzooq','door','nightstand','flashlight','almond','bat','mouse','backrooms',
- 'wallpaper','fluorescent','breaker','camera','battery','energy','backpack','bed','locker','filing','boxes','fan','monitor','warnings','mushroom'];
+ 'fluorescent','breaker','camera','battery','energy','backpack','bed','locker','filing','boxes','fan','monitor','warnings','mushroom',
+ 'rr-tv-table','rr-plush-bunny','rr-rail-post','rr-door-frame'];
 // صفحات Artifact تمنع fetch/XHR تمامًا (connect-src 'none')، و GLTFLoader.load يستعمل fetch.
 // فنفكّ الـ data URI محليًا ونستخدم parse — بدون أي طلب شبكة.
 function decodeDataURI(uri){

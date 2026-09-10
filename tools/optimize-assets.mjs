@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { simplifyGeometry } from './simplify-geometry.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_TEXTURE = 512;
@@ -212,11 +213,18 @@ mkdirSync(resolve(root, 'build/audio'), { recursive: true });
 
 let before = 0, after = 0;
 for (const file of readdirSync(resolve(root, 'public/models')).filter((f) => f.endsWith('.glb'))) {
-  const source = readFileSync(resolve(root, 'public/models', file));
+  const name = file.replace(/\.glb$/, '');
+  let source = readFileSync(resolve(root, 'public/models', file));
+  let simplifyNote = '';
+  try {
+    const { out, before: triBefore, after: triAfter } = await simplifyGeometry(source, name);
+    source = out;
+    if (triAfter !== triBefore) simplifyNote = `  tris ${triBefore}->${triAfter}`;
+  } catch (e) { console.warn(`  ! simplify skipped for ${file}: ${e.message}`); }
   const { out, dropped, textureBefore, textureAfter } = await optimizeGLB(source, file);
   writeFileSync(resolve(root, 'build/models', file), out);
   before += source.length; after += out.length;
-  console.log(`${file.padEnd(17)} ${KB(source.length).padStart(6)} -> ${KB(out.length).padStart(6)}  textures ${KB(textureBefore)}->${KB(textureAfter)}${dropped.length ? `  dropped ${dropped.join(',')}` : ''}`);
+  console.log(`${file.padEnd(17)} ${KB(source.length).padStart(6)} -> ${KB(out.length).padStart(6)}  textures ${KB(textureBefore)}->${KB(textureAfter)}${dropped.length ? `  dropped ${dropped.join(',')}` : ''}${simplifyNote}`);
 }
 for (const file of readdirSync(resolve(root, 'public/models')).filter((f) => f === 'manifest.json')) {
   writeFileSync(resolve(root, 'build/models', file), readFileSync(resolve(root, 'public/models', file)));

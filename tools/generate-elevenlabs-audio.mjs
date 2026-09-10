@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 
 const root=resolve(import.meta.dirname,'..');
 const env=readFileSync(resolve(root,'.env.local'),'utf8');
-const key=env.match(/^ELEVENLABS_API_KEY=(.+)$/m)?.[1]?.trim();
-if(!key)throw new Error('ELEVENLABS_API_KEY is missing');
+const keyName=process.argv.includes('--key2')?'ELEVENLABS_API_KEY2':'ELEVENLABS_API_KEY';
+const key=env.match(new RegExp('^'+keyName+'=(.+)$','m'))?.[1]?.trim();
+if(!key)throw new Error(keyName+' is missing');
 const story=JSON.parse(readFileSync(resolve(root,'game/cinema-story.json'),'utf8'));
 const output=resolve(root,'public/audio'),temp=resolve(root,'work/eleven-audio');mkdirSync(temp,{recursive:true});
 const headers={'xi-api-key':key,'content-type':'application/json','accept':'audio/mpeg'};
@@ -16,10 +17,24 @@ async function request(url,body,name){
  const next=resolve(temp,name),final=resolve(output,name);writeFileSync(next,Buffer.from(await response.arrayBuffer()));renameSync(next,final);console.log(name);
 }
 
-for(const [ending,data] of Object.entries(story))for(let i=0;i<data.beats.length;i++){
- const [,speaker,text]=data.beats[i],voice=voices[speaker]||voices.مرزوق;
- await request('https://api.elevenlabs.io/v1/text-to-speech/'+voice,{text,model_id:'eleven_multilingual_v2',voice_settings:{stability:speaker==='مرزوق'?.58:.48,similarity_boost:.76,style:speaker==='مرزوق'?.22:.35,use_speaker_boost:true}},'jojo-'+ending+'-'+i+'.mp3');
+async function speak(name,speaker,text){
+ const voice=voices[speaker]||voices.مرزوق;
+ await request('https://api.elevenlabs.io/v1/text-to-speech/'+voice,{text,model_id:'eleven_multilingual_v2',voice_settings:{stability:speaker==='مرزوق'?.58:.48,similarity_boost:.76,style:speaker==='مرزوق'?.22:.35,use_speaker_boost:true}},name);
 }
+
+const onlyNew=process.argv.includes('--new-only');
+if(!onlyNew)for(const [ending,data] of Object.entries(story))for(let i=0;i<data.beats.length;i++){
+ const [,speaker,text]=data.beats[i];
+ await speak('jojo-'+ending+'-'+i+'.mp3',speaker,text);
+}
+
+// تعليقات بيسو القصيرة على أغراض ديكور المتاهة الجديدة (الدبدوب، التلفزيون) — بدون أثر على مسار اللعب.
+const flavor=[
+ ['bunny.mp3','بيسو','دبدوب؟ هنا؟ ...ليش ما تفاجئني.'],
+ ['bunny-again.mp3','بيسو','للحين هنا يا صديقي.'],
+ ['tv.mp3','بيسو','حتى التلفزيون مقطوع عنه الكهربا.'],
+];
+for(const [name,speaker,text] of flavor)await speak(name,speaker,text);
 
 const effects={
  'sfx-bat.mp3':{text:'Terrifying bat swarm suddenly flapping directly past the listener in a dark hallway, sharp wings and one piercing screech, horror game jumpscare, no music',duration_seconds:2.2},
@@ -29,5 +44,5 @@ const effects={
  'sfx-locker.mp3':{text:'Old rusty metal locker door opens with a painfully loud long squeal and hollow slam in an empty hallway, no music',duration_seconds:2.4},
  'sfx-jumpscare.mp3':{text:'Sudden close monster impact, deep roar, heavy body hit and distorted sting for a horror game jumpscare, no speech, no music',duration_seconds:2.1}
 };
-for(const [name,body] of Object.entries(effects))await request('https://api.elevenlabs.io/v1/sound-generation',{...body,prompt_influence:.55},name);
+if(!onlyNew)for(const [name,body] of Object.entries(effects))await request('https://api.elevenlabs.io/v1/sound-generation',{...body,prompt_influence:.55},name);
 console.log('ElevenLabs audio complete');

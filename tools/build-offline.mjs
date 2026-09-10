@@ -7,7 +7,12 @@ const assets={};
 // نفضّل نسخة build/ المصغّرة إن وُجدت (tools/optimize-assets.mjs)، وإلا نرجع للأصل في public/
 const pick=(dir,file)=>{const built=resolve(root,'build',dir,file);return existsSync(built)?built:resolve(root,'public',dir,file);};
 for(const [dir,mime] of [['models','model/gltf-binary'],['audio','audio/mpeg']])for(const file of readdirSync(resolve(root,'public',dir))){if(!/\.(glb|mp3)$/.test(file))continue;assets[`/${dir}/${file}`]=`data:${mime};base64,${readFileSync(pick(dir,file)).toString('base64')}`;}
-assets['/textures/memory.png']='data:image/jpeg;base64,'+readFileSync(resolve(root,'standalone/memory.jpg')).toString('base64');
+// خامات public/textures تُضمّن كلها تلقائيًا (memory.png له نسخة مصغّرة يدويًا standalone/memory.jpg)
+for(const file of readdirSync(resolve(root,'public/textures'))){
+ const mime=file.endsWith('.png')?'image/png':file.endsWith('.jpg')||file.endsWith('.jpeg')?'image/jpeg':null;if(!mime)continue;
+ const source=file==='memory.png'?resolve(root,'standalone/memory.jpg'):resolve(root,'public/textures',file);
+ assets[`/textures/${file}`]=`data:${file==='memory.png'?'image/jpeg':mime};base64,${readFileSync(source).toString('base64')}`;
+}
 const result=await build({stdin:{contents:`import {BesoGame} from './game/engine.js';import {mountUI} from './standalone/ui.js';window.beso=mountUI(document.getElementById('app'),(stage,emit)=>new BesoGame(stage,emit));`,resolveDir:root,sourcefile:'standalone-entry.js'},bundle:true,write:false,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'none'});
 const js=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
 const css=readFileSync(resolve(root,'app/game.css'),'utf8');
