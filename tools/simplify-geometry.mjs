@@ -55,10 +55,13 @@ function patchOrphanAccessors(buffer) {
 }
 
 // الاسم -> نسبة المضلعات المستهدفة بعد التبسيط (0.2 = الإبقاء على ٢٠٪ فقط)
+// الحزمة النهائية بعيدة جدًا عن حد الـ16MB (وصلت ~8.6MB)، فرفعنا هذي النسب بعد ما بان
+// إن عدة موديلات بلا خامة صور (لوكر، مونيتور...) فقدت تفاصيلها الهندسية الوحيدة عند
+// التبسيط العنيف الأول — التفاصيل بهذي الملفات هندسة صرفة، مو نسيج، فلازم نبقي منها أكثر.
 const SIMPLIFY_RATIO = {
-  mushroom: 0.12, mouse: 0.18, monitor: 0.15, filing: 0.15, fan: 0.18,
-  locker: 0.22, backpack: 0.3, bed: 0.3, warnings: 0.35, breaker: 0.3,
-  energy: 0.3, battery: 0.35, nightstand: 0.35, camera: 0.45, boxes: 0.5,
+  mushroom: 0.35, mouse: 0.4, monitor: 0.45, filing: 0.4, fan: 0.4,
+  locker: 0.55, backpack: 0.45, bed: 0.5, warnings: 0.45, breaker: 0.45,
+  energy: 0.4, battery: 0.45, nightstand: 0.5, camera: 0.55, boxes: 0.6,
 };
 const SKINNED = new Set(['marzooq', 'bat']);
 

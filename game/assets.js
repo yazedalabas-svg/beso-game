@@ -27,19 +27,30 @@ async function loadModel(path){
  const buffer=source.startsWith('data:')?decodeDataURI(source):await (await fetch(source)).arrayBuffer();
  return parseWithoutFetch(buffer);
 }
+function cloneRenderable(source){
+ const scene=clone(source);
+ scene.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();o.frustumCulled=!o.isSkinnedMesh;}});
+ return scene;
+}
+function normalizeModel(scene,name,height){
+ // Correct source axes before measuring. Door width was authored along Z; the bed
+ // source was authored standing on its long edge (Y was its 14-unit length).
+ const oriented=new THREE.Group();oriented.add(scene);if(name==='door')scene.rotation.y+=Math.PI/2;else if(name==='bed')scene.rotation.x-=Math.PI/2;
+ oriented.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(oriented),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ const k=height/Math.max(.001,name==='flashlight'?size.z:size.y);
+ oriented.scale.setScalar(k);oriented.position.set(-center.x*k,-(name==='flashlight'?center.y:box.min.y)*k,-center.z*k);
+ const root=new THREE.Group();root.name='asset:'+name;root.add(oriented);return root;
+}
 export class GameAssets {
  constructor(){this.models={};this.errors=[];this.ready=Promise.all(names.map(async name=>{try{const gltf=await loadModel(`/models/${name}.glb`);this.models[name]=gltf.scene;}catch(e){this.errors.push(name);console.warn('Model unavailable',name,e);}}));}
  model(name,height){
   const source=this.models[name];if(!source)return null;
-  const scene=clone(source);
-  scene.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();o.frustumCulled=!o.isSkinnedMesh;}});
-  // Correct source axes before measuring. Door width was authored along Z.
-  const oriented=new THREE.Group();oriented.add(scene);if(name==='door')scene.rotation.y+=Math.PI/2;
-  oriented.updateMatrixWorld(true);
-  const box=new THREE.Box3().setFromObject(oriented),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
-  const k=height/Math.max(.001,name==='flashlight'?size.z:size.y);
-  oriented.scale.setScalar(k);oriented.position.set(-center.x*k,-(name==='flashlight'?center.y:box.min.y)*k,-center.z*k);
-  const root=new THREE.Group();root.name='asset:'+name;root.add(oriented);return root;
+  return normalizeModel(cloneRenderable(source),name,height);
+ }
+ part(name,partName,height){
+  const source=this.models[name]?.getObjectByName(partName);if(!source)return null;
+  return normalizeModel(cloneRenderable(source),name+':'+partName,height);
  }
 
 }

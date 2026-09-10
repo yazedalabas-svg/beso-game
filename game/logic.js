@@ -15,7 +15,7 @@ export function createMaze(seed=42,size=25){
  while(stack.length){const p=stack.at(-1);const options=[[2,0],[-2,0],[0,2],[0,-2]].map(([x,z])=>[p[0]+x,p[1]+z]).filter(([x,z])=>x>0&&z>0&&x<size-1&&z<size-1&&grid[z][x]===1);
   if(!options.length){stack.pop();continue;}const n=options[Math.floor(random()*options.length)];grid[(n[1]+p[1])/2][(n[0]+p[0])/2]=0;grid[n[1]][n[0]]=0;stack.push(n);
  }
- let initial=[];for(let z=0;z<size;z++)for(let x=0;x<size;x++)if(!grid[z][x])initial.push([x,z]);
+ const initial=[];for(let z=0;z<size;z++)for(let x=0;x<size;x++)if(!grid[z][x])initial.push([x,z]);
  const firstSearch=distanceMap(grid,start);let firstExit=start,firstMax=0;for(const p of initial){const d=firstSearch.distance.get(p.join(','))||0;if(d>firstMax){firstMax=d;firstExit=p;}}const firstPath=routeFrom(firstSearch.came,firstExit);
  // Open several actual rooms and a handful of loops. The result keeps the maze readable
  // while avoiding the old one-corridor-at-a-time feel.
@@ -29,7 +29,10 @@ export function createMaze(seed=42,size=25){
  const evidence=branch.sort((a,b)=>Math.abs((fromCheckpoint.distance.get(a.join(','))||99)-9)-Math.abs((fromCheckpoint.distance.get(b.join(','))||99)-9))[0]||longest[Math.floor(longest.length*.7)];
  const batteries=[];for(let i=13;i<longest.length-5;i+=24)batteries.push(longest[i]);
  const mushrooms=[];for(let i=9;i<longest.length-5;i+=17)mushrooms.push(longest[i]);
- const powerPoints=rooms.map((p,i)=>{const dm=distanceMap(grid,p).distance;return cells.find(c=>{const d=dm.get(c.join(','))||0;return d>7+i*2&&d<18+i*3;})||p;});
+ // عداد الكهرباء يحتاج جدارًا فعليًا يستند عليه — نفلتر على خلايا لها جار صلب واحد على الأقل
+ // (بدل أي خلية ممر عشوائية)، ونرجع أقرب جدار مطابق حتى يعرف المحرك اتجاه التثبيت.
+ const wallSide=(x,z)=>{for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]])if(grid[z+dz]?.[x+dx]===1)return [dx,dz];return null;};
+ const usedPowerCells=new Set(),powerPoints=rooms.map((p,i)=>{const dm=distanceMap(grid,p).distance;let options=cells.filter(c=>{const d=dm.get(c.join(','))||0;return d>7+i*2&&d<18+i*3&&wallSide(...c)&&!usedPowerCells.has(c.join(','));});if(!options.length)options=cells.filter(c=>wallSide(...c)&&!usedPowerCells.has(c.join(',')));const cell=options[Math.floor(random()*options.length)]||p;usedPowerCells.add(cell.join(','));return {cell,wall:wallSide(...cell)||[0,-1]};});
  const scareCells=rooms.map((p,i)=>{const dm=distanceMap(grid,p).distance;return cells.find(c=>(dm.get(c.join(','))||0)===4+i)||p;});
  const lounge=rooms[1]||checkpoint,control=rooms[2]||evidence;
  return {grid,start,exit,checkpoint,evidence,cells,path:longest,batteries,mushrooms,powerPoints,scareCells,rooms,lounge,control,seed,size};

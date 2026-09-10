@@ -6,6 +6,9 @@ test('four explicit endings and evidence gates',()=>{
  for(const evidenceRoom of [false,true])for(const evidenceMaze of [false,true]){const f={evidenceRoom,evidenceMaze};assert.equal(endingFor(f,'trust'),'comedy');assert.equal(endingFor(f,'unknown'),'loop');assert.equal(endingFor(f,'control'),evidenceRoom&&evidenceMaze?'secret':null);assert.equal(endingFor(f,'leave'),evidenceRoom&&evidenceMaze?'truth':'loop');}
  assert.equal(endingFor({},'invalid'),null);
 });
+test('power boxes use three distinct wall-mounted cells',()=>{
+ for(let seed=1;seed<=40;seed++){const maze=createMaze(seed),cells=new Set(maze.powerPoints.map(p=>p.cell.join(',')));assert.equal(cells.size,maze.powerPoints.length,`seed ${seed}`);for(const {cell:[x,z],wall:[dx,dz]} of maze.powerPoints)assert.equal(maze.grid[z+dz]?.[x+dx],1,`seed ${seed} missing wall`);}
+});
 test('pursuer never cuts corners across varied mazes and frame rates',()=>{
  for(let seed=1;seed<=20;seed++){const maze=createMaze(seed),e=createPursuer(maze.exit),random=seeded(seed+99);let travelled=0;for(let i=0;i<3600;i++){const p=cellToWorld(maze.path[Math.floor(i/90)%maze.path.length]);const r=advancePursuer(e,maze,p,i%3===0?.05:1/60,{random,lit:true,sprinting:i%120<60,quiet:false,grace:false,safe:false});assert.equal(mazeSolid(maze.grid,e.x,e.z,.29),false,`seed ${seed} step ${i}`);assert.ok(Number.isFinite(e.x+e.z+e.speed));assert.ok(e.speed<=3.75+.001);travelled+=r.travelled;}assert.ok(travelled>40);}
 });
