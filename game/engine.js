@@ -104,10 +104,17 @@ export class BesoGame {
    // wallMount يبحث في نصف قطر خلية حول موقع createMaze المقترح، فيتفادى حالة الممر الضيق
    // اللي جدار "مقابل" الجدار المكتشف يطلع هو نفسه جدار ثاني (زاوية/طريق مسدود من الجهتين).
    const mount=this.wallMount(p.cell),base=cellToWorld(mount.cell),[dx,dz]=mount.wall,inset=TILE/2-.1,x=base.x+dx*inset,z=base.z+dz*inset,yaw=Math.atan2(-dx,-dz);
+   // محلي +Z يواجه الغرفة دايمًا (بعيد عن الجدار)؛ الإصدار السابق كان يحط المفتاح واللوحة
+   // على -Z (خلف اللوحة المعدنية، جوّا الجدار عمليًا) فما كانا يبينان إطلاقًا.
    const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=yaw;this.world.add(group);
-   this.mesh(.42,.6,.14,this.materials.metal,0,.95,.03,group);this.mesh(.46,.64,.02,surface(0x20231b),0,.95,-.04,group);
-   this.mesh(.065,.22,.05,surface(0xcc3524),.1,.82,-.1,group);
-   const plaque=this.modelProp('breaker',.16,0,1.2,-.09,group);if(plaque)plaque.rotation.y=Math.PI;
+   this.mesh(.48,.68,.03,surface(0x171a13),0,.95,-.05,group); // اللوحة الخلفية الملاصقة للجدار
+   this.mesh(.4,.6,.09,this.materials.metal,0,.95,0,group); // باب الصندوق المعدني
+   this.mesh(.32,.5,.012,surface(0x2c3025),0,.95,.046,group); // إطار غائر يوحي بحدود الباب
+   const stripe=this.mesh(.4,.05,.015,surface(0xd9b23c),0,.68,.047,group);stripe.material.emissive.setHex(0x6b4e10);stripe.material.emissiveIntensity=1; // شريط تحذير أصفر مضيء بخفة، يساعد يبرز الصندوق تحت ضوء الفلاشلايت الضعيف
+   const dial=this.mesh(.005,.09,.09,surface(0xc8cdb8),0,1.14,.047,group);dial.rotation.z=Math.PI/2; // مقياس دائري صغير
+   this.mesh(.05,.18,.045,surface(0xd23a2a),-.11,.82,.075,group); // مفتاح أحمر بارز فعليًا للأمام
+   this.mesh(.05,.02,.05,this.materials.metal,-.11,.9,.06,group); // مفصلة المفتاح
+   const plaque=this.modelProp('breaker',.17,0,1.32,.05,group);if(plaque)plaque.rotation.y=Math.PI;
    const marker=new THREE.Group();marker.position.set(x-dx*.5,2.18,z-dz*.5);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xff5a42}));marker.add(orb);marker.visible=false;this.world.add(marker);
    const pos=new THREE.Vector3(x-dx*.35,.95,z-dz*.35);this.item(`breaker${i}`,'عداد الكهرباء',[pos.x,pos.y,pos.z],group);
    return {o:group,marker,pos};
