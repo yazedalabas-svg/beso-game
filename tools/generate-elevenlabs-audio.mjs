@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root=resolve(import.meta.dirname,'..');
@@ -10,8 +10,10 @@ const story=JSON.parse(readFileSync(resolve(root,'game/cinema-story.json'),'utf8
 const output=resolve(root,'public/audio'),temp=resolve(root,'work/eleven-audio');mkdirSync(temp,{recursive:true});
 const headers={'xi-api-key':key,'content-type':'application/json','accept':'audio/mpeg'};
 const voices={بيسو:'ErXwobaYiN019PkySvjV',مرزوق:'pNInz6obpgDQGcFmaJgB',النظام:'pNInz6obpgDQGcFmaJgB'};
+const missingOnly=process.argv.includes('--missing-only');
 
 async function request(url,body,name){
+ if(missingOnly&&existsSync(resolve(output,name))){console.log('skip '+name);return;}
  const response=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
  if(!response.ok){let detail='';try{detail=(await response.json())?.detail?.message||'';}catch{}throw new Error(name+': '+response.status+' '+detail);}
  const next=resolve(temp,name),final=resolve(output,name);writeFileSync(next,Buffer.from(await response.arrayBuffer()));renameSync(next,final);console.log(name);

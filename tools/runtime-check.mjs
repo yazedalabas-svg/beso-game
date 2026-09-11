@@ -31,19 +31,19 @@ const modelDir=existsSync('build/models')?'build/models':'public/models';
 globalThis.__BESO_ASSETS={};for(const file of readdirSync(modelDir).filter(f=>f.endsWith('.glb')))globalThis.__BESO_ASSETS['/models/'+file]='data:model/gltf-binary;base64,'+readFileSync(modelDir+'/'+file).toString('base64');
 console.log('models from',modelDir);
 const {BesoGame}=await import(pathToFileURL(out).href+'?v='+Date.now());
-let snapshot;const g=new BesoGame({clientWidth:1280,clientHeight:720,appendChild:noop},s=>snapshot=s);
+let snapshot,emits=0;const g=new BesoGame({clientWidth:1280,clientHeight:720,appendChild:noop},s=>{snapshot=s;emits++;});
 await g.assets.ready;
 const T=await import(three);
 for(const [name,limit] of [['marzooq',3],['flashlight',.31]]){const o=g.assets.model(name,name==='marzooq'?2.02:.3);const size=new T.Box3().setFromObject(o).getSize(new T.Vector3());assert.ok(Math.max(size.x,size.y,size.z)<limit,`${name} has invalid bounds`);}
 const doorSize=new T.Box3().setFromObject(g.assets.model('door',2.58)).getSize(new T.Vector3());assert.ok(doorSize.x>doorSize.z*3,'door must face the room');
 assert.deepEqual(g.assets.errors,[]);assert.ok(g.marzooq.userData.cat.bones.head);assert.ok(g.marzooq.userData.cat.bones['thigh.L']);
-await g.start();assert.equal(g.materials.metal.visible,true);assert.equal(g.mode,'intro');g.skipIntro();assert.equal(g.mode,'ready');g.resume();assert.equal(g.mode,'play');
+await g.start();assert.equal(g.materials.metal.visible,true);assert.equal(g.mode,'intro');g.skipIntro();assert.equal(g.mode,'play');
 g.target={id:'flashlight',object:{visible:true}};g.interact();g.target={id:'key',object:{visible:true}};g.interact();g.changeMode('puzzle');g.puzzle=[];for(const p of ['coffee','clock','door'])g.chooseSymbol(p);assert.equal(g.flags.memorySolved,true);g.closeRead();g.target={id:'door'};g.interact();assert.equal(g.level,'maze');
 g.target={id:'letter',object:{visible:true}};g.interact();g.target={id:'recording'};g.interact();assert.ok(g.flags.evidenceRoom&&g.flags.evidenceMaze);g.closeRead();
 assert.equal(g.maze.size,25);assert.ok(g.maze.rooms.length>=3&&g.powerBoxes.length>=3&&g.scareZones.length>=3);
 let pickup=g.interactables.find(x=>x.id==='backpack');g.target=pickup;g.interact();assert.equal(g.flags.backpack,true);
 pickup=g.interactables.find(x=>x.id.startsWith('mushroom'));g.stamina=12;g.target=pickup;g.interact();assert.ok(g.stamina>12&&g.flags.mushrooms.length===1);
-g.startBlackout();assert.equal(g.powerOut,true);assert.equal(g.mode,'event');g.skipEvent();assert.equal(g.mode,'play');const breaker=g.interactables.find(x=>x.id===`breaker${g.activeBreaker}`);g.target=breaker;g.interact();assert.equal(g.powerOut,false);assert.equal(g.flags.powerRestores,1);
+g.startBlackout();assert.equal(g.powerOut,true);assert.equal(g.mode,'event');const eventEmits=emits;for(let i=0;i<60;i++)g.updateEvent(1/60);assert.ok(emits-eventEmits<=2,'event dialogue must not re-render every frame');g.skipEvent();assert.equal(g.mode,'play');const breaker=g.interactables.find(x=>x.id===`breaker${g.activeBreaker}`);g.target=breaker;g.interact();assert.equal(g.powerOut,false);assert.equal(g.flags.powerRestores,1);
 for(const [choice,ending] of [['leave','truth'],['trust','comedy'],['unknown','loop'],['control','secret']]){
  g.changeMode('choice');g.decide(choice);assert.equal(g.mode,'cinematic');assert.equal(g.ending,ending);
  // Exercise scene camera, rig updates, timeline dialogue and natural completion.
