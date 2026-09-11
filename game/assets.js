@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
 export const assetURL=p=>globalThis.__BESO_ASSETS?.[p]||p;
-const names=['marzooq','door','nightstand','flashlight','almond','bat','mouse','backrooms',
+const names=['marzooq','door','flashlight','almond','bat','mouse','backrooms',
  'fluorescent','breaker','camera','battery','energy','backpack','bed','locker','filing','boxes','fan','monitor','warnings','mushroom',
  'rr-tv-table','rr-plush-bunny','rr-rail-post','rr-door-frame'];
 // صفحات Artifact تمنع fetch/XHR تمامًا (connect-src 'none')، و GLTFLoader.load يستعمل fetch.

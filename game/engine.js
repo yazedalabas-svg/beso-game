@@ -58,7 +58,6 @@ export class BesoGame {
   this.mesh(1.6,.13,.88,M.wood,2.8,.94,2.0);for(const x of [2.2,3.4])for(const z of [1.7,2.3])this.mesh(.08,.95,.08,M.metal,x,.46,z);this.addCollider(2.8,2,1.6,.88);
   this.pickupTorch=new THREE.Group();this.pickupTorch.position.set(2.6,1.07,1.9);this.world.add(this.pickupTorch);this.mesh(.075,.075,.3,M.metal,0,0,0,this.pickupTorch);this.mesh(.085,.085,.03,surface(0xc6cbb6),0,0,-.15,this.pickupTorch);this.item('flashlight','التقط الفلاشلايت',[2.6,1.12,1.9],this.pickupTorch);
   const mug=new THREE.Mesh(new THREE.CylinderGeometry(.12,.1,.17,16),M.paper);mug.position.set(3.22,1.11,2.0);mug.rotation.z=.26;this.world.add(mug);
-  const lamp=new THREE.PointLight(0xdcc391,2.1,9,2);lamp.position.set(.1,2.72,.1);this.world.add(lamp);this.roomLight=lamp;this.lampShade=this.mesh(.6,.1,.3,new THREE.MeshBasicMaterial({color:0xaba98c}),.1,2.95,.1);
   const photoTex=new THREE.TextureLoader().load(assetURL('/textures/memory.png'));photoTex.colorSpace=THREE.SRGBColorSpace;
   CLUES.forEach((p,i)=>{const frame=this.mesh(.08,.72,.91,M.wood,-3.85,1.62,-2.65+i*1.04);const pic=new THREE.Mesh(new THREE.PlaneGeometry(.78,.51),new THREE.MeshBasicMaterial({map:photoTex}));pic.rotation.y=Math.PI/2;pic.position.set(-3.79,1.66,-2.65+i*1.04);this.world.add(pic);const n=this.sign(['١ · فنجال','٢ · ساعة','٣ · باب'][i],.63,.13,'#b7ae8e','#342a1f');n.rotation.y=Math.PI/2;n.position.set(-3.77,1.34,-2.65+i*1.04);this.world.add(n);this.item(p.id,'تفحّص ذكرى قديمة',[-3.76,1.6,-2.65+i*1.04],frame);});
   const scratch=this.sign('تذكّر... أول شيء، ثم آخر شيء.',2,.25,'#454738','#817e61');scratch.position.set(0,1.72,3.87);scratch.rotation.y=Math.PI;this.world.add(scratch);this.addRoomModels();
@@ -85,7 +84,20 @@ export class BesoGame {
  // ورق حائط أصفر مقلّم — نسيج مأخوذ من حزمة Rec Room، يعطي غرفة المراقبة طابع "خلف الواقع" مختلف عن الجدران العادية
  wallpaperMaterial(){if(!this.wallpaperTex){const t=new THREE.TextureLoader().load(assetURL('/textures/wallpaper.jpg'));t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);t.anisotropy=4;this.wallpaperTex=t;this.wallpaperMat=new THREE.MeshStandardMaterial({map:t,roughness:.92});}return this.wallpaperMat;}
  addRoomModels(){
-  this.modelProp('nightstand',1.25,2.85,0,-2.75);this.addCollider(2.85,-2.75,1.05,.9);
+  // كان موديل nightstand.glb طاولة ضخمة بلمبة ووعاء مطبوخين داخل الميش نفسه (يمتد فعليًا
+  // متر وربع ارتفاعًا وياخذ رقعة ١م تقريبًا)، واللمبة الحقيقية المضيئة كانت منفصلة تمامًا
+  // معلّقة قرب السقف وسط الغرفة — يعني "قتل مرزوق النور" ما كان له مصدر مرئي حقيقي.
+  // نبنيها الحين إجرائيًا بارتفاع نايت‌ستاند طبيعي (~٥٨سم) ونحط عليها لمبة طاولة فعلية
+  // تصير هي مصدر ضوء الغرفة، بنفس أسلوب طاولة الفلاشلايت الخشبية أدناه.
+  const M=this.materials,nx=2.85,nz=-2.75;
+  this.mesh(.62,.05,.5,M.wood,nx,.56,nz);
+  for(const dx of [-.26,.26])for(const dz of [-.20,.20])this.mesh(.045,.5,.045,M.metal,nx+dx,.28,nz+dz);
+  this.addCollider(nx,nz,.66,.54);
+  this.mesh(.11,.04,.11,M.metal,nx,.605,nz);
+  this.mesh(.024,.22,.024,M.metal,nx,.715,nz);
+  const lamp=new THREE.PointLight(0xdcc391,2.1,9,2);lamp.position.set(nx,.90,nz);this.world.add(lamp);this.roomLight=lamp;
+  this.lampShade=new THREE.Mesh(new THREE.CylinderGeometry(.085,.135,.16,16),new THREE.MeshBasicMaterial({color:0xaba98c}));
+  this.lampShade.position.set(nx,.90,nz);this.world.add(this.lampShade);
   const bed=this.modelProp('bed',.72,-2.65,0,1.15);if(bed){bed.rotation.y=Math.PI/2;bed.visible=true;}
   const door=this.modelProp('door',2.58,.9,0,0,this.doorHinge);if(door){door.scale.x=1.46;this.doorMesh.visible=false;}
   const torch=this.assets.model('flashlight',.30);if(torch){this.pickupTorch.children.forEach(o=>o.visible=false);this.pickupTorch.add(torch);}
