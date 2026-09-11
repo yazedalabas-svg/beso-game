@@ -34,7 +34,7 @@ export function mountUI(host, start) {
   let settingsOpen = false;
   let signature = '';
   let snap = null;
-  const touch = { p: null };
+  const touch = { id: null, x: 0, y: 0 };
 
   const act = (method, ...args) => game?.[method]?.(...args);
 
@@ -262,7 +262,7 @@ export function mountUI(host, start) {
     act(cmd);
   });
 
-  // أزرار اللمس: نضغط/نفلت المفاتيح مباشرة على المحرك
+  // أزرار اللمس: نضغط/نفلت المفاتيح مباشرة على المحرك مع دعم اللمس المتعدد
   const holdKey = (e) => {
     const b = e.target.closest('[data-key]');
     if (!b) return;
@@ -277,18 +277,33 @@ export function mountUI(host, start) {
   layer.addEventListener('pointerdown', (e) => {
     holdKey(e);
     if (e.target.classList.contains('look-pad')) {
-      touch.p = { x: e.clientX, y: e.clientY };
-      e.target.setPointerCapture(e.pointerId);
+      if (touch.id === null) {
+        touch.id = e.pointerId;
+        touch.x = e.clientX;
+        touch.y = e.clientY;
+        e.target.setPointerCapture?.(e.pointerId);
+      }
     }
   });
   layer.addEventListener('pointermove', (e) => {
-    if (touch.p && e.target.classList.contains('look-pad')) {
-      act('look', e.clientX - touch.p.x, e.clientY - touch.p.y);
-      touch.p = { x: e.clientX, y: e.clientY };
+    if (touch.id === e.pointerId && e.target.classList.contains('look-pad')) {
+      const dx = e.clientX - touch.x;
+      const dy = e.clientY - touch.y;
+      touch.x = e.clientX;
+      touch.y = e.clientY;
+      if (Math.hypot(dx, dy) < 120) {
+        act('look', dx, dy);
+      }
     }
   });
-  layer.addEventListener('pointerup', (e) => { releaseKey(e); touch.p = null; });
-  layer.addEventListener('pointercancel', (e) => { releaseKey(e); touch.p = null; });
+  const endTouch = (e) => {
+    releaseKey(e);
+    if (touch.id === e.pointerId) {
+      touch.id = null;
+    }
+  };
+  layer.addEventListener('pointerup', endTouch);
+  layer.addEventListener('pointercancel', endTouch);
 
   try {
     game = start(stage, onSnapshot);
