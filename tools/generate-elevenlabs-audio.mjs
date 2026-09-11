@@ -12,7 +12,15 @@ const fallbackKey=env.match(new RegExp('^'+fallbackName+'=(.+)$','m'))?.[1]?.tri
 const keys=[key,fallbackKey].filter((value,index,list)=>value&&list.indexOf(value)===index);
 const story=JSON.parse(readFileSync(resolve(root,'game/cinema-story.json'),'utf8'));
 const output=resolve(root,'public/audio'),temp=resolve(root,'work/eleven-audio');mkdirSync(temp,{recursive:true});
-const voices={بيسو:'ErXwobaYiN019PkySvjV',مرزوق:'pNInz6obpgDQGcFmaJgB',النظام:'pNInz6obpgDQGcFmaJgB'};
+// Keep every recurring speaker on a genuinely different ElevenLabs performer.
+// Beso is younger and more reactive; Marzooq is deep and controlled; the system
+// voice is firm and neutral so it cannot be mistaken for either character.
+const voices={
+ بيسو:{id:'ErXwobaYiN019PkySvjV',settings:{stability:.34,similarity_boost:.70,style:.46,use_speaker_boost:true}},
+ مرزوق:{id:'pNInz6obpgDQGcFmaJgB',settings:{stability:.72,similarity_boost:.86,style:.12,use_speaker_boost:true}},
+ النظام:{id:'VR6AewLTigWG4xSOukaG',settings:{stability:.82,similarity_boost:.78,style:.08,use_speaker_boost:true}}
+};
+if(new Set(Object.values(voices).map(voice=>voice.id)).size!==Object.keys(voices).length)throw new Error('Every character must use a distinct ElevenLabs performer');
 const missingOnly=process.argv.includes('--missing-only');
 
 async function request(url,body,name){
@@ -22,11 +30,12 @@ async function request(url,body,name){
 }
 
 async function speak(name,speaker,text){
- const voice=voices[speaker]||voices.مرزوق;
- await request('https://api.elevenlabs.io/v1/text-to-speech/'+voice,{text,model_id:'eleven_multilingual_v2',voice_settings:{stability:speaker==='مرزوق'?.58:.48,similarity_boost:.76,style:speaker==='مرزوق'?.22:.35,use_speaker_boost:true}},name);
+ const voice=voices[speaker]||voices.النظام;
+ await request('https://api.elevenlabs.io/v1/text-to-speech/'+voice.id,{text,model_id:'eleven_multilingual_v2',voice_settings:voice.settings},name);
 }
 
 const onlyNew=process.argv.includes('--new-only');
+const voicesOnly=process.argv.includes('--voices-only');
 if(!onlyNew)for(const [ending,data] of Object.entries(story))for(let i=0;i<data.beats.length;i++){
  const [,speaker,text]=data.beats[i];
  await speak('jojo-'+ending+'-'+i+'.mp3',speaker,text);
@@ -42,5 +51,5 @@ const effects={
  'sfx-locker.mp3':{text:'Old rusty metal locker door opens with a painfully loud long squeal and hollow slam in an empty hallway, no music',duration_seconds:2.4},
  'sfx-jumpscare.mp3':{text:'Sudden close monster impact, deep roar, heavy body hit and distorted sting for a horror game jumpscare, no speech, no music',duration_seconds:2.1}
 };
-if(!onlyNew)for(const [name,body] of Object.entries(effects))await request('https://api.elevenlabs.io/v1/sound-generation',{...body,prompt_influence:.55},name);
+if(!onlyNew&&!voicesOnly)for(const [name,body] of Object.entries(effects))await request('https://api.elevenlabs.io/v1/sound-generation',{...body,prompt_influence:.55},name);
 console.log('ElevenLabs audio complete');
