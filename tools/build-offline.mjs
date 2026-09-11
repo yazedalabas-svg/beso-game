@@ -27,3 +27,4 @@ ${css}</style>
 window.__BESO_ASSETS=${JSON.stringify(assets)};
 ${js}</script>`;
 mkdirSync(resolve(root,'standalone'),{recursive:true});writeFileSync(resolve(root,'standalone/beso.html'),html);console.log(`Offline game: ${(Buffer.byteLength(html)/1048576).toFixed(1)} MB; ${Object.keys(assets).length} embedded assets`);
+writeFileSync(resolve(root,'standalone/index.html'),html);

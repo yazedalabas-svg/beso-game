@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: beso-game
+    runtime: static
+    buildCommand: npm ci && npm run standalone
+    staticPublishPath: ./standalone
+    pullRequestPreviewsEnabled: false

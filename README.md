@@ -58,6 +58,15 @@ npm run standalone
 ```
 يتم إنشاء ملف اللعبة المستقل الكامل في: `standalone/beso.html`
 
+### النشر على Render
+
+المشروع مجهز للنشر كـ Static Site حتى لا يتم تشغيل `wrangler dev` في بيئة الإنتاج:
+
+- **Build Command:** `npm ci && npm run standalone`
+- **Publish Directory:** `standalone`
+
+ينشئ البناء الملف `standalone/index.html` تلقائيًا، لذلك تفتح اللعبة مباشرة من رابط Render.
+
 ---
 
 ## 📜 الترخيص
