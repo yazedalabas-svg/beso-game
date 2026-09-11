@@ -116,11 +116,15 @@ export function beginCinema(g,id){
   c.doorHinge=new THREE.Group();c.doorHinge.position.set(-.66,0,4);g.world.add(c.doorHinge);
   c.door=prop(g,'door',2.8,.66,0,0,c.doorHinge);
   sign(g,'خارج الممرات',0,3.25,3.82,2.4).rotation.y=Math.PI;c.beso.visible=false;c.marzooq.visible=false;
-  // ممر باك رومز قصير يظهر عبر فتحة الباب — عشان يبين إن بيسو طلع فعلاً من مكان، لا من عدم.
-  const brWall=mat(0x8d8352,{roughness:.92}),brFloor=mat(0x746a3e,{roughness:.95}),brCeil=mat(0x4d4a2e);
-  g.mesh(1.8,.06,6,brFloor,0,-.03,7);g.mesh(1.8,.06,6,brCeil,0,3.58,7);
-  for(const side of [-1,1])g.mesh(.06,3.6,6,brWall,side*.9,1.78,7);
-  for(let i=0;i<3;i++){const z=4.6+i*1.8;g.mesh(.9,.05,.32,mat(0xe8e8b4,{emissive:0xe8e8b4,emissiveIntensity:i===1?.15:1}),0,3.5,z);const l=new THREE.PointLight(0xeee6a0,i===1?1.2:4.5,5);l.position.set(0,3.2,z);g.world.add(l);}
+  // ممر باك رومز خلف الباب — كان بعرض ١٫٨م فقط بينما جدارَي إطار الباب الجانبيين يمتدان
+  // حتى ٤٫٩م، فيترك فجوة مكشوفة على الجنبين تبين منها شارع المشهد الأصلي خلف الباب.
+  // وسّعناه ليطابق عرض جدارَي الإطار بالضبط + غطينا الطرف البعيد بجدار مسدود، عشان يصير
+  // ممرًا مغلقًا فعليًا لا صندوقًا عائمًا وسط الشارع.
+  const brWall=mat(0x8d8352,{roughness:.92}),brFloor=mat(0x746a3e,{roughness:.95}),brCeil=mat(0x4d4a2e),brDark=mat(0x2c2a1c,{roughness:.95});
+  g.mesh(9.8,.06,7,brFloor,0,-.03,7.4);g.mesh(9.8,.06,7,brCeil,0,3.68,7.4);
+  for(const side of [-1,1])g.mesh(.1,3.7,7,brWall,side*4.9,1.85,7.4);
+  g.mesh(9.8,3.7,.1,brDark,0,1.85,10.9); // جدار مسدود يقفل الطرف البعيد بدل ما يفضى على عدم
+  for(let i=0;i<3;i++){const z=4.7+i*1.9,dim=i===1;g.mesh(.9,.05,.32,mat(0xe8e8b4,{emissive:0xe8e8b4,emissiveIntensity:dim?.15:1}),0,3.5,z);const l=new THREE.PointLight(0xeee6a0,dim?1.1:3.4,4.6);l.position.set(0,3.2,z);g.world.add(l);}
   // غلاف الأورا الذهبي حول بيسو في المشية الأخيرة — مفتوح الطرفين وبدون كتابة عمق عشان يلتف حوله لا يحجبه.
   c.aura=new THREE.Mesh(new THREE.CylinderGeometry(.78,.3,2.9,22,1,true),new THREE.MeshBasicMaterial({color:0xffcf6b,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
   c.aura.position.y=1.45;c.aura.visible=false;g.world.add(c.aura);
@@ -255,7 +259,9 @@ function partner(g,t,dt){
 export function updateCinema(g,dt){
  const t=g.cinemaTime+=dt,id=g.cinemaId,story=STORY[id];g.cinemaFx='';g.cinemaGraphic='';g.cinemaCard='';
  const beat=story.beats.findLastIndex(([time])=>t>=time);
- if(beat!==g.cinemaBeat){g.cinemaBeat=beat;const [,speaker,line]=story.beats[beat];const next=story.beats[beat+1]?.[0]??story.duration;g.say(`${speaker}: «${line}»`,next-t+.05);g.sounds.voice(`jojo-${id}-${beat}`);}
+ // نخفي الترجمة قبل ثانية من نهاية نافذة الجملة (لا نلمس توقيت الكاميرا/الصوت نفسه) عشان
+ // يصير سكوت مقصود بعد ما الشخصية تخلص كلامها، بدل ما تنقطع الجملة وتبدأ اللي بعدها فورًا.
+ if(beat!==g.cinemaBeat){g.cinemaBeat=beat;const [,speaker,line]=story.beats[beat];const next=story.beats[beat+1]?.[0]??story.duration;g.say(`${speaker}: «${line}»`,Math.max(.3,next-t-1)+.05);g.sounds.voice(`jojo-${id}-${beat}`);}
  if(id==='truth')duel(g,t,dt);else if(id==='comedy')cafe(g,t,dt);else if(id==='loop')timeLoop(g,t,dt);else partner(g,t,dt);
  if(g.cinemaFx==='time-stop'&&g.lastCinemaFx!=='time-stop')g.sounds.timeStop();g.lastCinemaFx=g.cinemaFx;const frozen=g.cinemaFx==='time-stop';if(!frozen)g.cinemaProps.dust.rotation.y+=dt*.09;
  g.sounds.listener(g.camera.position,g.camera.rotation.y,g.camera.rotation.x);

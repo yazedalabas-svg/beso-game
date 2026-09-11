@@ -4,6 +4,14 @@ import {animateCat} from './assets.js';
 const material=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.64,...extra});
 function box(parent,w,h,d,x,y,z,mat){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);parent.add(o);return o;}
 function sphere(parent,r,x,y,z,mat){const o=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),mat);o.position.set(x,y,z);parent.add(o);return o;}
+// القبعة/العصابة كانت مركّبة على مجموعة "clothes" الثابتة، فما تتحرك مع عظمة الرأس — إذا
+// انحنى الرأس بوضعية زي faceoff تفضل القبعة معلّقة بمكانها القديم بينما الرأس تحته يتحرك.
+// هذا يعيد ربط القطعة بعظمة الرأس نفسها بدل الجذع، فتلف وتنحني معه بالضبط.
+function mountOnHead(root,parent,mesh){
+ const bone=root.userData.cat?.bones.head;if(!bone)return mesh;
+ parent.remove(mesh);root.updateWorldMatrix(true,true);
+ mesh.position.copy(bone.worldToLocal(mesh.position.clone()));bone.add(mesh);return mesh;
+}
 export function actor(g,role){
  const root=new THREE.Group(),model=g.assets.model('marzooq',2.02);if(!model)return root;
  root.name='cinema:'+role;model.rotation.y=Math.PI;root.add(model);
@@ -12,15 +20,15 @@ export function actor(g,role){
  const gold=material(0xd6ad42,{metalness:.55}),black=material(0x101724),green=material(0x5ca770),yellow=material(0xdca83e);
  const clothes=new THREE.Group();root.add(clothes);
  if(role==='beso'){
-  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.17,.185,.12,24),black);cap.position.set(0,1.91,-.04);clothes.add(cap);
-  box(clothes,.37,.035,.23,0,1.865,-.19,black);box(clothes,.085,.05,.02,0,1.93,-.188,gold);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.17,.185,.12,24),black);cap.position.set(0,1.91,-.04);clothes.add(cap);mountOnHead(root,clothes,cap);
+  mountOnHead(root,clothes,box(clothes,.37,.035,.23,0,1.865,-.19,black));mountOnHead(root,clothes,box(clothes,.085,.05,.02,0,1.93,-.188,gold));
   const coat=new THREE.Mesh(new THREE.CylinderGeometry(.40,.36,1.02,28,1,true,Math.PI+.64,Math.PI*2-1.28),material(0x101724,{side:THREE.DoubleSide}));coat.position.y=1.04;clothes.add(coat);
   for(const side of [-1,1])box(clothes,.035,.17,.06,side*.21,1.52,-.18,gold);
   for(let i=0;i<7;i++){const link=new THREE.Mesh(new THREE.TorusGeometry(.036,.009,5,10),gold);link.position.set(.27+Math.sin(i*.65)*.04,1.54-i*.039,-.22);link.rotation.y=i%2?Math.PI/2:0;clothes.add(link);}
  }else if(role==='marzooq'){
   for(const side of [-1,1]){const pad=sphere(clothes,.155,side*.36,1.51,0,yellow);pad.scale.set(1.1,.65,1);}
   const jacket=new THREE.Mesh(new THREE.CylinderGeometry(.38,.29,.39,24,1,true,Math.PI+.85,Math.PI*2-1.7),material(0xdca83e,{side:THREE.DoubleSide}));jacket.position.y=1.26;clothes.add(jacket);
-  box(clothes,.48,.065,.34,0,.91,0,green);const band=new THREE.Mesh(new THREE.TorusGeometry(.168,.017,6,24),green);band.rotation.x=Math.PI/2;band.position.set(0,1.87,-.01);clothes.add(band);sphere(clothes,.035,0,1.88,-.18,gold);
+  box(clothes,.48,.065,.34,0,.91,0,green);const band=new THREE.Mesh(new THREE.TorusGeometry(.168,.017,6,24),green);band.rotation.x=Math.PI/2;band.position.set(0,1.87,-.01);clothes.add(band);mountOnHead(root,clothes,band);mountOnHead(root,clothes,sphere(clothes,.035,0,1.88,-.18,gold));
  }else{
   const color=role==='star'?0x946bee:0xffcd57;
   model.traverse(o=>{if(o.isMesh){o.material=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.42,roughness:.3,metalness:.38,transparent:true,opacity:.64,depthWrite:false});}});
