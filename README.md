@@ -62,10 +62,10 @@ npm run standalone
 
 المشروع مجهز للنشر كـ Static Site حتى لا يتم تشغيل `wrangler dev` في بيئة الإنتاج:
 
-- **Build Command:** `npm ci && npm run standalone`
-- **Publish Directory:** `standalone`
+- **Build Command:** `npm run build`
+- **Publish Directory:** `dist/client`
 
-ينشئ البناء الملف `standalone/index.html` تلقائيًا، لذلك تفتح اللعبة مباشرة من رابط Render.
+لا تضع Start Command في إعدادات Static Site؛ Render يخدم ملفات `dist/client` مباشرة.
 
 ---
 
