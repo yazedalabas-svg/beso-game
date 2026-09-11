@@ -4,6 +4,7 @@ import {Soundscape} from './audio.js';
 import {GameAssets,assetURL,animateCat} from './assets.js';
 import {createPursuer,advancePursuer} from './pursuit.js';
 import {beginCinema,updateCinema} from './cinematics.js';
+import {VOICE_BY_CAPTION} from './voice-lines.js';
 
 const CLUES=[{id:'photo0',title:'الصورة الأولى · القهوة',body:'«أول ما جيت، صب لي فنجال. قال: القهوة هالمرة على حسابي.»',symbol:'coffee'},{id:'photo1',title:'الصورة الثانية · الساعة',body:'«عقب القهوة، ثقلت عيوني وأنا أطالع الساعة. مرزوق كان يطالع الباب.»',symbol:'clock'},{id:'photo2',title:'الصورة الثالثة · الباب',body:'«آخر شيء أذكره، صوت الباب وهو يتقفل. ومرزوق يقول إنه يحميني.»',symbol:'door'}];
 const MAX_BATTERY=80;
@@ -95,17 +96,20 @@ export class BesoGame {
   const start=at(this.maze.start,.85,.15),bag=this.modelProp('backpack',.62,start[0],0,start[1]);if(bag){bag.rotation.y=-.7;this.item('backpack','خذ الشنطة',[start[0],.55,start[1]],bag);}
   const bunnyAt=at(this.maze.start,-.9,.55),bunny=this.modelProp('rr-plush-bunny',.34,bunnyAt[0],0,bunnyAt[1]);if(bunny){bunny.rotation.y=2.1;this.item('bunny','قرّب من الدبدوب',[bunnyAt[0],.2,bunnyAt[1]],bunny);}
   this.maze.mushrooms.forEach((p,i)=>{if(this.flags.mushrooms.includes(i))return;const [x,z]=at(p,(i%2?.72:-.72),0);const o=this.modelProp('mushroom',.28,x,0,z);if(o){o.traverse(n=>{if(n.isMesh){n.material.color?.setHex(0x6b3f84);n.material.emissive?.setHex(0x17091d);}});this.item(`mushroom${i}`,'كل الفطر · يعيد الستامينا',[x,.24,z],o);}});
-  // كل عداد مثبت على جدار فعلي. نستخدم موديل صندوق الكهرباء الكامل ببابه ومكوّناته،
-  // ونترك الصندوق الإجرائي كبديل فقط لو تعذر تحميل الأصل.
+  // كل عداد مثبت فعليًا على الجدار اللي حدده createMaze (اتجاه p.wall)، بصندوق مبني إجرائيًا
+  // بمقاسات مضبوطة (بدل موديل breaker.glb الأصلي: بحجمه المعقول ما زال جسمه الهندسي يمتد
+  // متر ونص تقريبًا حول مركزه — يبتلع الممر ويقف اللاعب داخله فعليًا). نستعمل الموديل نفسه
+  // كلوحة تحذير صغيرة زخرفية فوق الصندوق بدل استعماله كجسم الصندوق الرئيسي.
   this.powerBoxes=this.maze.powerPoints.map((p,i)=>{
-   // The breaker source is authored with its front along local +X (its cabinet is
-   // only 15 cm deep on X), so rotate +X toward the corridor rather than treating
-   // local +Z as the front.
-   const w=cellToWorld(p.cell),[dx,dz]=p.wall,inset=TILE/2-.32,x=w.x+dx*inset,z=w.z+dz*inset,yaw=Math.atan2(dz,-dx);
+   // wallMount يبحث في نصف قطر خلية حول موقع createMaze المقترح، فيتفادى حالة الممر الضيق
+   // اللي جدار "مقابل" الجدار المكتشف يطلع هو نفسه جدار ثاني (زاوية/طريق مسدود من الجهتين).
+   const mount=this.wallMount(p.cell),base=cellToWorld(mount.cell),[dx,dz]=mount.wall,inset=TILE/2-.1,x=base.x+dx*inset,z=base.z+dz*inset,yaw=Math.atan2(-dx,-dz);
    const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=yaw;this.world.add(group);
-   const cabinet=this.modelProp('breaker',.78,0,.62,0,group);if(!cabinet){this.mesh(.5,.68,.16,this.materials.metal,0,.96,0,group);this.mesh(.07,.24,.055,surface(0xcc3524),.11,.86,-.09,group);}
-   const marker=new THREE.Group();marker.position.set(x-dx*.22,2.18,z-dz*.22);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xff5a42}));marker.add(orb);marker.visible=false;this.world.add(marker);
-   const pos=new THREE.Vector3(x-dx*.38,.98,z-dz*.38);this.item(`breaker${i}`,'عداد الكهرباء',[pos.x,pos.y,pos.z],group);
+   this.mesh(.42,.6,.14,this.materials.metal,0,.95,.03,group);this.mesh(.46,.64,.02,surface(0x20231b),0,.95,-.04,group);
+   this.mesh(.065,.22,.05,surface(0xcc3524),.1,.82,-.1,group);
+   const plaque=this.modelProp('breaker',.16,0,1.2,-.09,group);if(plaque)plaque.rotation.y=Math.PI;
+   const marker=new THREE.Group();marker.position.set(x-dx*.5,2.18,z-dz*.5);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xff5a42}));marker.add(orb);marker.visible=false;this.world.add(marker);
+   const pos=new THREE.Vector3(x-dx*.35,.95,z-dz*.35);this.item(`breaker${i}`,'عداد الكهرباء',[pos.x,pos.y,pos.z],group);
    return {o:group,marker,pos};
   });
   const [lx,lz]=at(this.maze.lounge);const vending=this.mesh(.95,2.05,.65,surface(0x313843),lx+.8,1.03,lz);this.mesh(.69,1.05,.03,new THREE.MeshBasicMaterial({color:0x5e91a4}),lx+.8,1.38,lz-.34);const vSign=this.sign('استراحة الموظفين',1.5,.28,'#27374a','#bddbe2');vSign.position.set(lx,2.25,lz-1.15);this.world.add(vSign);this.item('vending','جرّب آلة البيع',[lx+.8,1.2,lz-.4],vending);
@@ -138,7 +142,7 @@ export class BesoGame {
   g.userData={arms,legs,skull};return g;
  }
  buildMaze(seed){
-  this.clearWorld();this.scene.background=null;this.fill.color.setHex(0x8f9274);this.level='maze';this.maze=createMaze(seed,25);this.random=seeded(seed^99557);this.fill.intensity=.19;this.scene.fog.color.setHex(0x1a190f);this.scene.fog.density=.042;this.roomLight=null;const M=this.materials,size=this.maze.size*TILE;
+  this.sounds.preloadMaze();this.clearWorld();this.scene.background=null;this.fill.color.setHex(0x8f9274);this.level='maze';this.maze=createMaze(seed,25);this.random=seeded(seed^99557);this.fill.intensity=.19;this.scene.fog.color.setHex(0x1a190f);this.scene.fog.density=.042;this.roomLight=null;const M=this.materials,size=this.maze.size*TILE;
   this.mesh(size,.15,size,M.floor,size/2-TILE/2,-.1,size/2-TILE/2);const ceiling=surface(0x7d7c5c);this.mesh(size,.15,size,ceiling,size/2-TILE/2,2.9,size/2-TILE/2);
   const walls=[];for(let z=0;z<this.maze.size;z++)for(let x=0;x<this.maze.size;x++)if(this.maze.grid[z][x])walls.push([x*TILE,z*TILE]);
   const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(TILE,2.9,TILE),M.wall,walls.length),matrix=new THREE.Matrix4();walls.forEach(([x,z],i)=>{matrix.makeTranslation(x,1.45,z);inst.setMatrixAt(i,matrix);});this.world.add(inst);
@@ -149,8 +153,11 @@ export class BesoGame {
   const cp=cellToWorld(this.maze.checkpoint);const cpSign=this.sign('استراحة · نقطة حفظ',1.7,.3,'#263f30','#bde1b5');cpSign.position.set(cp.x,1.65,cp.z+.6);this.world.add(cpSign);this.mesh(1.5,.08,.5,M.wood,cp.x,.52,cp.z+.6);const cpLight=new THREE.PointLight(0x75b092,1.6,5);cpLight.position.set(cp.x,2,cp.z);this.world.add(cpLight);this.poweredLights.push(cpLight);
   const ep=cellToWorld(this.maze.evidence);const recorder=this.mesh(.31,.15,.22,M.metal,ep.x,.3,ep.z);this.mesh(.04,.04,.01,new THREE.MeshBasicMaterial({color:0xcc542e}),ep.x,.32,ep.z-.116);this.item('recording','شغّل التسجيل',[ep.x,.4,ep.z],recorder);
   const nearRoute=pathfind(this.maze.grid,this.maze.checkpoint,this.maze.evidence);nearRoute.filter((_,i)=>i%3===0).forEach(p=>{const w=cellToWorld(p),s=this.sign('صوت مرزوق ←',.8,.2,'#574e31','#c5b879');s.rotation.x=-Math.PI/2;s.position.set(w.x,.021,w.z);this.world.add(s);});
-  const ex=cellToWorld(this.maze.exit);this.exitSign=this.sign('خروج ؟',1.8,.55,'#283f31','#c0d9a2');this.exitSign.position.set(ex.x,2,ex.z);this.world.add(this.exitSign);this.mesh(1.1,.02,1.1,surface(0x466b4a),ex.x,.015,ex.z);const exitLight=new THREE.PointLight(0x85bc82,4,7);exitLight.position.set(ex.x,2,ex.z);this.world.add(exitLight);this.poweredLights.push(exitLight);this.item('exit','الباب الأخير',[ex.x,1.4,ex.z]);
-  const beforeExit=this.maze.path.at(-2)||this.maze.exit,exitWall=[this.maze.exit[0]-beforeExit[0],this.maze.exit[1]-beforeExit[1]],exitX=ex.x+exitWall[0]*(TILE/2-.08),exitZ=ex.z+exitWall[1]*(TILE/2-.08),exitYaw=Math.atan2(-exitWall[0],-exitWall[1]),exitDoor=this.modelProp('door',2.5,exitX,0,exitZ);if(exitDoor)exitDoor.rotation.y=exitYaw;const exitFrame=this.modelProp('rr-door-frame',2.66,exitX,0,exitZ);if(exitFrame)exitFrame.rotation.y=exitYaw;
+  // اللافتة والباب لازم يواجهوا نفس اتجاه اقتراب اللاعب (اتجاه المسار قبل الخروج مباشرة)،
+  // وإلا تبان اللافتة معكوسة لأي حد يدخل من الجهة المقابلة لوجه المستوى الافتراضي.
+  const ex=cellToWorld(this.maze.exit),beforeExit=this.maze.path.at(-2)||this.maze.exit,exitWall=[this.maze.exit[0]-beforeExit[0],this.maze.exit[1]-beforeExit[1]],exitX=ex.x+exitWall[0]*(TILE/2-.08),exitZ=ex.z+exitWall[1]*(TILE/2-.08),exitYaw=Math.atan2(-exitWall[0],-exitWall[1]);
+  this.exitSign=this.sign('خروج ؟',1.8,.55,'#283f31','#c0d9a2');this.exitSign.position.set(ex.x-exitWall[0]*.08,2,ex.z-exitWall[1]*.08);this.exitSign.rotation.y=exitYaw;this.world.add(this.exitSign);this.mesh(1.1,.02,1.1,surface(0x466b4a),ex.x,.015,ex.z);const exitLight=new THREE.PointLight(0x85bc82,4,7);exitLight.position.set(ex.x,2,ex.z);this.world.add(exitLight);this.poweredLights.push(exitLight);this.item('exit','الباب الأخير',[ex.x,1.4,ex.z]);
+  const exitDoor=this.modelProp('door',2.5,exitX,0,exitZ);if(exitDoor)exitDoor.rotation.y=exitYaw;const exitFrame=this.modelProp('rr-door-frame',2.66,exitX,0,exitZ);if(exitFrame)exitFrame.rotation.y=exitYaw;
   this.addMazeContent();
   // A surviving photograph near the entrance keeps all endings reachable after leaving the room.
   if(!this.flags.evidenceRoom){const w=cellToWorld(this.maze.start),s=this.sign('نسخة من الرسالة · دليل ١',1.2,.3);s.position.set(w.x-1.48,1.3,w.z);s.rotation.y=Math.PI/2;this.world.add(s);this.item('letter','خذ نسخة الرسالة',[w.x-1.45,1.3,w.z],s);}
@@ -162,18 +169,18 @@ export class BesoGame {
  lock(){if(this.mobile)return;try{const promise=this.canvas.requestPointerLock();promise?.catch(()=>{this.mobile=true;this.broadcast();});}catch{this.mobile=true;}}
  look(dx,dy){this.yaw-=dx*.002*this.settings.sensitivity;this.pitch=clamp(this.pitch-dy*.002*this.settings.sensitivity,-1.35,1.35);}
  changeMode(mode){this.mode=mode;this.keys.clear();if(!['play','intro'].includes(mode)&&document.pointerLockElement===this.canvas)document.exitPointerLock();this.broadcast();}
- async start(continueRun=false){if(this.mode==='loading')return;this.changeMode('loading');await this.warmReady;if(this.disposed)return;this.sounds.init();this.sounds.pause(false);this.flags=FLAGS();this.deaths=0;this.elapsed=0;this.stamina=100;this.ending=null;this.sounds.stopVoice();this.sounds.stopEffects();this.exhausted=false;this.hasMidpoint=false;
+ async start(continueRun=false){if(this.mode==='loading')return;this.changeMode('loading');await this.warmReady;if(this.disposed)return;this.sounds.preloadRoom();this.sounds.init();this.sounds.pause(false);this.flags=FLAGS();this.deaths=0;this.elapsed=0;this.stamina=100;this.ending=null;this.sounds.stopVoice();this.sounds.stopEffects();this.exhausted=false;this.hasMidpoint=false;
   if(continueRun&&[1,2].includes(this.saved?.version)&&this.saved.flags&&this.saved.seed){this.flags={...FLAGS(),...this.saved.flags,inventory:{...FLAGS().inventory,...this.saved.flags.inventory},flashOn:false};this.seed=this.saved.seed;this.checkpoint=this.saved.checkpoint;this.deaths=this.saved.deaths||0;this.hasMidpoint=!!this.saved.hasMidpoint||this.checkpoint.cell.join()!=='1,1';this.loadLevelAtCheckpoint();this.lock();this.changeMode('play');this.say('رجعت عند آخر نقطة آمنة. مرزوق للحين يدور عليك.',5);return;}
-  this.seed=Math.floor(Math.random()*2147483647)+1;this.checkpoint={cell:[1,1],battery:70};this.hasMidpoint=false;this.buildRoom();this.player.set(-.8,.82,1.9);this.yaw=.02;this.pitch=.46;this.marzooq.visible=true;this.marzooq.position.set(-.78,0,.62);this.marzooq.rotation.set(0,Math.PI,0);this.introTime=0;this.introStep=0;this.roomLight.intensity=5.2;this.changeMode('intro');this.sounds.voice('opening');this.say('مرزوق: «لا تطلع يا بيسو... أنا بس أحاول أحميك»',7);
+  this.seed=Math.floor(Math.random()*2147483647)+1;this.checkpoint={cell:[1,1],battery:70};this.hasMidpoint=false;this.buildRoom();this.player.set(-.8,.82,1.9);this.yaw=.02;this.pitch=.46;this.marzooq.visible=true;this.marzooq.position.set(-.78,0,.62);this.marzooq.rotation.set(0,Math.PI,0);this.introTime=0;this.introStep=0;this.roomLight.intensity=5.2;this.changeMode('intro');this.say('مرزوق: «لا تطلع يا بيسو... أنا بس أحاول أحميك»',7);
  }
- skipIntro(){if(this.mode!=='intro')return;this.finishIntro(true);this.sounds.stopVoice();}
+ skipIntro(){if(this.mode!=='intro')return;this.sounds.stopVoice();this.finishIntro(true);}
  showTouchHint(){this.touchHint=false;this.say('استخدم سحب الشاشة للنظر، وأزرار الحركة بالأسفل.',7);}
  finishIntro(playNow=false){this.marzooq.visible=false;this.introLight.intensity=0;this.player.set(.1,1.65,2.8);this.yaw=0;this.pitch=-.04;this.roomLight.intensity=3.6;this.fill.intensity=.22;this.lampShade.material.color.setHex(0x2b2c24);this.doorHinge.rotation.y=0;this.beforePause='play';if(playNow){this.changeMode('play');this.lock();}else this.changeMode('ready');this.say('بيسو: «مرزوق... وش سويت؟»',5);if(this.touchHint)setTimeout(()=>{if(!this.disposed&&this.touchHint)this.showTouchHint();},6200);}
  pause(){if(!['play','intro','cinematic','event'].includes(this.mode))return;this.beforePause=this.mode;this.changeMode('pause');this.sounds.pause(true);}
  resume(){this.sounds.pause(false);const next=['intro','cinematic','event'].includes(this.beforePause)?this.beforePause:'play';if(next==='play')this.lock();this.changeMode(next);}
  closeRead(){this.sounds.stopVoice();this.read=null;this.lock();this.changeMode('play');}
  setSettings(settings){this.settings={...this.settings,...settings};this.sounds.setVolume(this.settings.volume);this.sounds.setMuted(this.settings.muted);this.broadcast();}
- say(text,seconds=4){this.subtitle=text;this.subUntil=this.time+seconds;this.broadcast();}
+ say(text,seconds=4){const voice=VOICE_BY_CAPTION[text];if(voice)this.sounds.voice(voice);this.subtitle=text;this.subUntil=this.time+seconds;this.broadcast();}
  toggleFlash(){if(this.mode!=='play')return;if(!this.flags.flashlight){this.say('الفلاشلايت على الطاولة.',4);return;}if(this.flags.battery<=0){this.say('الفلاشلايت مات. بقي صوت المكان.',4);return;}this.flags.flashOn=!this.flags.flashOn;this.sounds.click();this.broadcast();}
  goal(){if(this.level==='room'){if(!this.flags.flashlight)return 'دور على مصدر ضوء فوق الطاولة';if(!this.flags.keyFound)return 'فتّش تحت السرير عن المفتاح';if(!this.flags.memorySolved)return 'رتّب الذكريات وافتح المزلاج';return 'افتح الباب';}if(this.powerOut)return 'الكهرباء مقطوعة · اتبع علامة عداد الكهرباء';return this.flags.evidenceMaze?'وصل للمخرج وحدد مصيرك.':'استكشف المناطق وابحث عن تسجيل مرزوق.';}
  openJournal(){this.read={id:'journal',title:'ذاكرة بيسو',body:this.guideText()};this.changeMode('read');}
@@ -183,12 +190,12 @@ export class BesoGame {
  skipEvent(){if(this.mode!=='event')return;this.eventTime=this.eventDuration;this.finishEvent();}
  finishEvent(){if(this.mode!=='event')return;this.eventId='';this.eventTime=0;this.lock();this.changeMode('play');}
  inspectBack(){if(!this.read?.id.startsWith('photo'))return;this.flags.evidenceRoom=true;this.read={...this.read,back:true,title:'خلف الصورة · بخط مرزوق',body:'«لازم بيسو ينام قبل ما أقفل عليه. لو درى وش سويت، ما راح يسامحني.»'};this.sounds.pickup();this.say('بيسو: «الخط خطه... والكذبة بعد كذبته.»',5);this.save();this.broadcast();}
- chooseSymbol(symbol){if(this.mode!=='puzzle'||this.flags.memorySolved)return;this.puzzle.push(symbol);this.sounds.click();if(this.puzzle.length===3){if(solveMemory(this.puzzle)){this.flags.memorySolved=true;this.puzzleMessage='طَقّ! انفتح مزلاج الذكريات.';this.sounds.pickup();}else{this.puzzleMessage='مو كذا... القهوة أولًا. وش صار بعدها؟';this.puzzle=[];this.sounds.tone(96,.2,.13);}}this.broadcast();}
+ chooseSymbol(symbol){if(this.mode!=='puzzle'||this.flags.memorySolved)return;this.puzzle.push(symbol);this.sounds.click();if(this.puzzle.length===3){if(solveMemory(this.puzzle)){this.flags.memorySolved=true;this.puzzleMessage='طَقّ! انفتح مزلاج الذكريات.';this.sounds.pickup();this.sounds.voice('puzzle-success');}else{this.puzzleMessage='مو كذا... القهوة أولًا. وش صار بعدها؟';this.puzzle=[];this.sounds.tone(96,.2,.13);this.sounds.voice('puzzle-fail');}}this.broadcast();}
  clearPuzzle(){this.puzzle=[];this.puzzleMessage='';this.broadcast();}
  interact(){if(this.mode!=='play'||!this.target)return;const t=this.target;
   if(t.id==='flashlight'){this.flags.flashlight=true;this.flags.flashOn=true;this.hand.visible=true;t.object.visible=false;this.say('بيسو: «النور قليل... لازم أختار متى أشغله.»',5);this.sounds.pickup();}
   else if(t.id==='key'){this.flags.keyFound=true;t.object.visible=false;this.say('بيسو: «المفتاح تحت السرير؟ يا سلام على الأمن.»',5);this.sounds.pickup();}
-  else if(t.id.startsWith('photo')){const p=CLUES.find(p=>p.id===t.id);if(!this.flags.photos.includes(p.id))this.flags.photos.push(p.id);this.read={...p};this.changeMode('read');}
+  else if(t.id.startsWith('photo')){const p=CLUES.find(p=>p.id===t.id);if(!this.flags.photos.includes(p.id))this.flags.photos.push(p.id);this.read={...p};this.changeMode('read');this.sounds.voice(p.id);}
   else if(t.id==='door'){if(roomUnlocked(this.flags)){this.sounds.door();this.flags.flashlight=true;this.flags.battery=Math.max(55,this.flags.battery);this.checkpoint={cell:[1,1],battery:this.flags.battery};this.loadLevelAtCheckpoint();this.flags.flashOn=true;this.changeMode('play');this.save();this.say('بيسو: «هذا المكان أكبر من اللي وصفه مرزوق.»',6);}else{this.puzzle=[];this.puzzleMessage='';this.changeMode('puzzle');}}
   else if(t.id.startsWith('battery')){const id=Number(t.id.slice(7));if(!this.flags.batteries.includes(id)){this.flags.batteries.push(id);this.flags.battery=Math.min(MAX_BATTERY,this.flags.battery+20);t.object.visible=false;this.sounds.pickup();this.say('بطارية نادرة. عشرون ثانية زيادة.',4);this.save();}}
   else if(t.id.startsWith('mushroom')){const id=Number(t.id.slice(8));if(!this.flags.mushrooms.includes(id)){this.flags.mushrooms.push(id);this.stamina=Math.min(100,this.stamina+48);t.object.visible=false;this.sounds.pickup();this.say('الغريب أنه نفع. رجعت الستامينا.',4);this.save();}}
@@ -198,16 +205,16 @@ export class BesoGame {
   else if(t.id==='monitor'){if(!this.flags.events.includes('cctv'))this.beginEvent('cctv',7);else this.say('التسجيل انتهى عند لحظة ظهور مرزوق خلف الكاميرا.',4);}
   else if(t.id==='vending'){if(this.flags.events.includes('vending'))this.say('الآلة أخذت قرارها.',3);else{this.flags.events.push('vending');this.sounds.vending();if(this.random()>.45){this.flags.battery=Math.min(MAX_BATTERY,this.flags.battery+10);this.say('نزلت بطارية بدل المشروب. تمشي.',4);}else{this.flags.dignity=Math.max(0,this.flags.dignity-8);this.triggerScare('mouse',t.object.position,'vending-rat');this.say('طلع فأر. الآلة واضحة في سياستها.',4);}this.save();}}
   else if(t.id==='locker'){this.sounds.locker();this.flags.dignity=Math.max(0,this.flags.dignity-4);if(this.enemy){this.enemy.last=worldToCell(this.player);this.enemy.state='investigate';this.enemy.path=[];}this.say('صرير الخزانة فضح المكان كله.',4);}
-  else if(t.id==='bunny'){const seen=this.flags.events.includes('bunny');if(!seen)this.flags.events.push('bunny');this.sounds.voice(seen?'bunny-again':'bunny');this.say(seen?'بيسو: «للحين هنا يا صديقي.»':'بيسو: «دبدوب؟ هنا؟ ...ليش ما تفاجئني.»',5);}
-  else if(t.id==='tv'){this.sounds.voice('tv');this.say('بيسو: «حتى التلفزيون مقطوع عنه الكهربا.»',4);}
+  else if(t.id==='bunny'){const seen=this.flags.events.includes('bunny');if(!seen)this.flags.events.push('bunny');this.say(seen?'بيسو: «للحين هنا يا صديقي.»':'بيسو: «دبدوب؟ هنا؟ ...ليش ما تفاجئني.»',5);}
+  else if(t.id==='tv'){this.say('بيسو: «حتى التلفزيون مقطوع عنه الكهربا.»',4);}
   else if(t.id==='falseExit'){this.beginEvent('false-exit',5);}
   else if(t.id==='letter'){this.flags.evidenceRoom=true;t.object.visible=false;this.sounds.pickup();this.say('الدليل الأول معك. بقي التسجيل قرب الاستراحة للوصول للهروب الحقيقي.',7);this.save();}
   else if(t.id==='recording'){this.flags.evidenceMaze=true;this.read={id:'recording',title:'تسجيل ٠١٧ · لا تثق بالباب',body:'«بيسو، أنا حطّيت لك المنوّم وقفلت عليك... الممرات طلبت واحد بدالي. قلت لنفسي إني أحميك، بس كنت أحمي نفسي.»\n[تشويش]\n«رقم التجربة: ب.س.و. صاحب المشروع لا يتذكر.»'};this.changeMode('read');this.save();this.sounds.voice('recording');}
   else if(t.id==='exit'){this.changeMode('choice');this.sounds.stopVoice();this.say('مرزوق من خلف الباب: «افتح لي يا بيسو. أقدر أفسّر لك.»',15);}
   this.broadcast();
  }
- decide(choice){if(this.mode!=='choice')return;const id=endingFor(this.flags,choice);if(!id)return;this.ending=id;this.save();beginCinema(this,id);}
- finishCinema(){if(this.mode!=='cinematic')return;this.sounds.stopVoice();this.sounds.stopEffects();if(!this.unlocked.includes(this.ending))this.unlocked.push(this.ending);try{localStorage.setItem('beso-endings-v1',JSON.stringify(this.unlocked));}catch{}this.cinemaFx='';this.camera.fov=72;this.camera.updateProjectionMatrix();this.changeMode('ending');}
+ decide(choice){if(this.mode!=='choice')return;const id=endingFor(this.flags,choice);if(!id)return;this.ending=id;this.save();this.sounds.preloadEnding(id);beginCinema(this,id);}
+ finishCinema(){if(this.mode!=='cinematic')return;this.sounds.stopVoice();this.sounds.stopEffects();if(!this.unlocked.includes(this.ending))this.unlocked.push(this.ending);try{localStorage.setItem('beso-endings-v1',JSON.stringify(this.unlocked));}catch{}this.cinemaFx='';this.camera.fov=72;this.camera.updateProjectionMatrix();this.changeMode('ending');this.sounds.voice('ending-'+this.ending);}
  replayCinema(){if(this.mode==='ending')beginCinema(this,this.ending);}
  returnToChoice(){if(this.mode!=='ending')return;this.sounds.stopVoice();this.sounds.stopEffects();this.loadLevelAtCheckpoint();this.changeMode('choice');}
  guideText(){return '١ · المواجهة: خذ الرسالة والتسجيل ثم اخرج من الباب الحقيقي.\n٢ · المصالحة المسمومة: اجلس مع مرزوق من دون شروط.\n٣ · أنت شخص رهيب: اختر مواجهة مرزوق بالكلام.\n٤ · سر الحماية: اجمع الدليلين واكشف غرفة المراقبة.\nالفطر يعيد الستامينا فورًا. افتح الشنطة بزر B. عند انقطاع الكهرباء اتبع علامة العداد؛ تعود الكهرباء تلقائيًا بعد ثلاث دقائق.';}
@@ -262,7 +269,7 @@ export class BesoGame {
     this.doorHinge.rotation.y=Math.max(0,1-(t-6.3));}
    if(t>9)this.finishIntro();}
   else if(this.mode==='play'){this.elapsed+=dt;this.movement(dt);if(this.flags.flashOn&&this.flags.flashlight){this.flags.battery=Math.max(0,this.flags.battery-dt);if(this.flags.battery===0){this.flags.flashOn=false;this.say('بيسو: «خلاص... صار لازم أسمع أكثر مما أشوف.»',5);}}this.findTarget();if(this.level==='maze'){this.updatePower(dt);this.updateEnemy(dt);}this.sounds.listener(this.camera.position,this.yaw,this.pitch);this.sounds.update(dt,this.threat,this.level,this.sprinting,this.player);}
-  else if(this.mode==='caught'){this.caughtTime+=dt;const forward=new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);this.marzooq.position.copy(this.player).addScaledVector(forward,.34+Math.max(0,.16-this.caughtTime*.12));this.marzooq.position.y=this.player.y-1.74;this.marzooq.rotation.y=this.yaw+Math.PI;this.marzooq.userData.skull.rotation.z=Math.sin(this.time*40)*.13;this.fillLocal.intensity=7;this.camera.fov=72+Math.sin(Math.min(1,this.caughtTime)*Math.PI)*18;this.camera.updateProjectionMatrix();this.camera.rotation.z=this.settings.reduced?0:Math.sin(this.time*95)*.055*Math.max(0,1-this.caughtTime);if(this.caughtTime>1.15&&!this.deadline){this.deadline=1;this.sounds.voice('comedy');this.say('مرزوق: «أنت سريع... بس الممرات معي.»',7);}}
+  else if(this.mode==='caught'){this.caughtTime+=dt;const forward=new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);this.marzooq.position.copy(this.player).addScaledVector(forward,.34+Math.max(0,.16-this.caughtTime*.12));this.marzooq.position.y=this.player.y-1.74;this.marzooq.rotation.y=this.yaw+Math.PI;this.marzooq.userData.skull.rotation.z=Math.sin(this.time*40)*.13;this.fillLocal.intensity=7;this.camera.fov=72+Math.sin(Math.min(1,this.caughtTime)*Math.PI)*18;this.camera.updateProjectionMatrix();this.camera.rotation.z=this.settings.reduced?0:Math.sin(this.time*95)*.055*Math.max(0,1-this.caughtTime);if(this.caughtTime>1.15&&!this.deadline){this.deadline=1;this.say('مرزوق: «أنت سريع... بس الممرات معي.»',7);}}
   if(['intro','caught'].includes(this.mode))animateCat(this.marzooq,this.time,0,dt);
   if(this.mode!=='caught')this.fillLocal.intensity=this.level==='maze'?.13:.045;
   this.updateLights();this.renderer.render(this.scene,this.camera);if(stamp-this.lastUI>130){this.broadcast();this.lastUI=stamp;}this.frame=requestAnimationFrame(t=>this.update(t));
