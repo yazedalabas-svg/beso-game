@@ -96,27 +96,24 @@ export class BesoGame {
   const start=at(this.maze.start,.85,.15),bag=this.modelProp('backpack',.62,start[0],0,start[1]);if(bag){bag.rotation.y=-.7;this.item('backpack','خذ الشنطة',[start[0],.55,start[1]],bag);}
   const bunnyAt=at(this.maze.start,-.9,.55),bunny=this.modelProp('rr-plush-bunny',.34,bunnyAt[0],0,bunnyAt[1]);if(bunny){bunny.rotation.y=2.1;this.item('bunny','قرّب من الدبدوب',[bunnyAt[0],.2,bunnyAt[1]],bunny);}
   this.maze.mushrooms.forEach((p,i)=>{if(this.flags.mushrooms.includes(i))return;const [x,z]=at(p,(i%2?.72:-.72),0);const o=this.modelProp('mushroom',.28,x,0,z);if(o){o.traverse(n=>{if(n.isMesh){n.material.color?.setHex(0x6b3f84);n.material.emissive?.setHex(0x17091d);}});this.item(`mushroom${i}`,'كل الفطر · يعيد الستامينا',[x,.24,z],o);}});
-  // كل عداد مثبت فعليًا على الجدار اللي حدده createMaze (اتجاه p.wall)، بصندوق مبني إجرائيًا
-  // بمقاسات مضبوطة (بدل موديل breaker.glb الأصلي: بحجمه المعقول ما زال جسمه الهندسي يمتد
-  // متر ونص تقريبًا حول مركزه — يبتلع الممر ويقف اللاعب داخله فعليًا). نستعمل الموديل نفسه
-  // كلوحة تحذير صغيرة زخرفية فوق الصندوق بدل استعماله كجسم الصندوق الرئيسي.
+  // كل عداد هو موديل breaker.glb نفسه — لا صندوق إجرائي تحته ولا نسخة مصغّرة فوقه.
+  // قياس الموديل: جسم المحفظة يشغل x ∈ [-.38,-.15] والباب مفتوح نحو +X، يعني ظهرها عند -X
+  // وواجهتها تطالع +X. فنلفّها ربع لفة ليصير +X هو +Z المحلي (اتجاه الغرفة)، وندفعها للأمام
+  // بمقدار نصف عمق الصندوق عشان صفيحة الظهر تنطبق على سطح الجدار بالضبط بدل ما تعوم قدامه.
   this.powerBoxes=this.maze.powerPoints.map((p,i)=>{
    // wallMount يبحث في نصف قطر خلية حول موقع createMaze المقترح، فيتفادى حالة الممر الضيق
    // اللي جدار "مقابل" الجدار المكتشف يطلع هو نفسه جدار ثاني (زاوية/طريق مسدود من الجهتين).
    const mount=this.wallMount(p.cell),base=cellToWorld(mount.cell),[dx,dz]=mount.wall,inset=TILE/2-.1,x=base.x+dx*inset,z=base.z+dz*inset,yaw=Math.atan2(-dx,-dz);
-   // محلي +Z يواجه الغرفة دايمًا (بعيد عن الجدار)؛ الإصدار السابق كان يحط المفتاح واللوحة
-   // على -Z (خلف اللوحة المعدنية، جوّا الجدار عمليًا) فما كانا يبينان إطلاقًا.
    const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=yaw;this.world.add(group);
-   this.mesh(.48,.68,.03,surface(0x171a13),0,.95,-.05,group); // اللوحة الخلفية الملاصقة للجدار
-   this.mesh(.4,.6,.09,this.materials.metal,0,.95,0,group); // باب الصندوق المعدني
-   this.mesh(.32,.5,.012,surface(0x2c3025),0,.95,.046,group); // إطار غائر يوحي بحدود الباب
-   const stripe=this.mesh(.4,.05,.015,surface(0xd9b23c),0,.68,.047,group);stripe.material.emissive.setHex(0x6b4e10);stripe.material.emissiveIntensity=1; // شريط تحذير أصفر مضيء بخفة، يساعد يبرز الصندوق تحت ضوء الفلاشلايت الضعيف
-   const dial=this.mesh(.005,.09,.09,surface(0xc8cdb8),0,1.14,.047,group);dial.rotation.z=Math.PI/2; // مقياس دائري صغير
-   this.mesh(.05,.18,.045,surface(0xd23a2a),-.11,.82,.075,group); // مفتاح أحمر بارز فعليًا للأمام
-   this.mesh(.05,.02,.05,this.materials.metal,-.11,.9,.06,group); // مفصلة المفتاح
-   const plaque=this.modelProp('breaker',.17,0,1.32,.05,group);if(plaque)plaque.rotation.y=Math.PI;
+   // سطح الجدار هو z=-.1 محليًا (لأن inset أنقص ١٠ سم عن نصف البلاطة).
+   const height=.62,backOffset=.379*height,foot=1.2;
+   const panel=this.modelProp('breaker',height,0,foot,-.1+backOffset,group);if(panel)panel.rotation.y=-Math.PI/2;
+   // ماسورة كهرباء ملاصقة للجدار تطلع من رأس المحفظة للسقف: تشرح ليش الصندوق هنا
+   // بدل ما يبان ملصوقًا على الجدار بلا سبب.
+   const conduit=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,2.9-(foot+height),8),this.materials.metal);
+   conduit.position.set(0,(foot+height+2.9)/2,-.055);group.add(conduit);
    const marker=new THREE.Group();marker.position.set(x-dx*.5,2.18,z-dz*.5);const orb=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xff5a42}));marker.add(orb);marker.visible=false;this.world.add(marker);
-   const pos=new THREE.Vector3(x-dx*.35,.95,z-dz*.35);this.item(`breaker${i}`,'عداد الكهرباء',[pos.x,pos.y,pos.z],group);
+   const pos=new THREE.Vector3(x-dx*.42,foot+height/2,z-dz*.42);this.item(`breaker${i}`,'عداد الكهرباء',[pos.x,pos.y,pos.z],group);
    return {o:group,marker,pos};
   });
   const [lx,lz]=at(this.maze.lounge);const vending=this.mesh(.95,2.05,.65,surface(0x313843),lx+.8,1.03,lz);this.mesh(.69,1.05,.03,new THREE.MeshBasicMaterial({color:0x5e91a4}),lx+.8,1.38,lz-.34);const vSign=this.sign('استراحة الموظفين',1.5,.28,'#27374a','#bddbe2');vSign.position.set(lx,2.25,lz-1.15);this.world.add(vSign);this.item('vending','جرّب آلة البيع',[lx+.8,1.2,lz-.4],vending);
@@ -235,7 +232,7 @@ export class BesoGame {
  updateScares(dt){if(!this.scareEvent){for(const zone of this.scareZones||[]){if(!zone.triggered&&this.player.distanceTo(zone.pos)<1.65){this.triggerScare(zone.kind,zone.pos,`scare${zone.id}`);break;}}return;}const e=this.scareEvent;e.time+=dt;if(e.object){const f=new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw),target=this.player.clone().addScaledVector(f,e.kind==='bat'?.72:.5);target.y=e.kind==='bat'?1.7:.18;e.object.position.lerp(target,Math.min(1,dt*9));e.object.lookAt(this.player.x,1.4,this.player.z);if(e.kind==='bat')e.object.rotation.z=Math.sin(this.time*38)*.5;}if(e.time>.9){if(e.object)e.object.visible=false;this.scareEvent=null;this.miniScare='';this.save();}}
  updateEvent(dt){this.eventTime+=dt;const lines={blackout:['انطفأت كل اللمبات.','مرزوق: «الحين بتسمع المكان مثل ما أسمعه.»'],cctv:['التسجيل يظهر مرزوق واقفًا خلف الكاميرا.','مرزوق: «إذا شفتني هنا... لا تلتفت.»'],'false-exit':['وراء باب EXIT غرفة ضيقة ومروحة فقط.','بيسو: «حتى المخرج هنا يحتاج مخرج.»'],lounge:['الإضاءة هادئة أكثر من اللازم.','صوت مرزوق من السماعة: «خذ راحتك... أعرف وينك.»']};const list=lines[this.eventId]||['...'],line=Math.min(list.length-1,Math.floor(this.eventTime/(this.eventDuration/list.length)));if(line!==this.eventLine){this.eventLine=line;this.say(list[line],this.eventDuration/list.length+.1);}if(this.eventTime>=this.eventDuration)this.finishEvent();}
  isSolid(x,z){if(this.level==='maze')return mazeSolid(this.maze.grid,x,z);if(x< -3.7||x>3.7||z>3.7||z< -3.7)return true;return this.colliders.some(b=>x+.23>b.minX&&x-.23<b.maxX&&z+.23>b.minZ&&z-.23<b.maxZ);}
- movement(dt){const k=this.keys;let x=(k.has('KeyD')||k.has('ArrowRight')?1:0)-(k.has('KeyA')||k.has('ArrowLeft')?1:0),z=(k.has('KeyS')||k.has('ArrowDown')?1:0)-(k.has('KeyW')||k.has('ArrowUp')?1:0);const moving=x||z;if(this.stamina<=1)this.exhausted=true;if(this.stamina>=30)this.exhausted=false;const sprint=moving&&k.has('ShiftLeft')&&!k.has('KeyC')&&!this.exhausted&&this.stamina>0;this.sprinting=sprint;const crouch=k.has('KeyC');this.player.y=THREE.MathUtils.damp(this.player.y,crouch?.91:1.65,12,dt);this.stamina=clamp(this.stamina+(sprint?-26:16)*dt,0,100);
+ movement(dt){const k=this.keys;let x=(k.has('KeyD')||k.has('ArrowRight')?1:0)-(k.has('KeyA')||k.has('ArrowLeft')?1:0),z=(k.has('KeyS')||k.has('ArrowDown')?1:0)-(k.has('KeyW')||k.has('ArrowUp')?1:0);const moving=x||z;if(this.stamina<=1)this.exhausted=true;if(this.stamina>=30)this.exhausted=false;const sprint=moving&&k.has('ShiftLeft')&&!k.has('KeyC')&&!this.exhausted&&this.stamina>0;this.sprinting=sprint;this.moving=!!moving;const crouch=k.has('KeyC');this.player.y=THREE.MathUtils.damp(this.player.y,crouch?.91:1.65,12,dt);this.stamina=clamp(this.stamina+(sprint?-26:16)*dt,0,100);
   if(moving){const len=Math.hypot(x,z);x/=len;z/=len;const speed=crouch?1.5:sprint?4.75:2.8;const dx=(Math.cos(this.yaw)*x+Math.sin(this.yaw)*z)*speed*dt,dz=(-Math.sin(this.yaw)*x+Math.cos(this.yaw)*z)*speed*dt;if(!this.isSolid(this.player.x+dx,this.player.z))this.player.x+=dx;if(!this.isSolid(this.player.x,this.player.z+dz))this.player.z+=dz;this.stepClock+=dt;if(this.stepClock>(sprint?.30:crouch?.72:.47)){this.sounds.step(null,false);this.stepClock=0;}this.bob=(this.bob||0)+dt*(sprint?13:9);}else this.bob=0;
   this.camera.position.copy(this.player);this.camera.position.y+=moving&&!this.settings.reduced?Math.sin(this.bob)*.027:0;this.camera.rotation.set(this.pitch,this.yaw,0);this.hand.position.y=-.28+Math.sin(this.bob||0)*.009;
  }
@@ -243,10 +240,11 @@ export class BesoGame {
  updateEnemy(dt){
   const e=this.enemy;this.grace=Math.max(0,this.grace-dt);const cp=cellToWorld(this.maze.checkpoint),atSafe=this.hasMidpoint&&Math.hypot(this.player.x-cp.x,this.player.z-cp.z)<1.65,exit=cellToWorld(this.maze.exit),nearGoal=Math.hypot(this.player.x-exit.x,this.player.z-exit.z)<15||this.flags.evidenceMaze;
   this.enemySpawnClock+=dt;if(e.state==='patrol'&&this.enemySpawnClock>24&&this.grace<=0){const pc=worldToCell(this.player),spots=this.maze.cells.filter(p=>{const d=pathfind(this.maze.grid,pc,p).length,w=cellToWorld(p);return d>=7&&d<=14&&!lineOfSight(this.maze.grid,this.player,w);});const p=spots[Math.floor(this.random()*spots.length)];if(p){const w=cellToWorld(p);Object.assign(e,{x:w.x,z:w.z,cell:[...p],path:[],last:null});this.marzooq.position.set(e.x,0,e.z);}this.enemySpawnClock=0;}
-  const old=e.state,r=advancePursuer(e,this.maze,this.player,dt,{random:this.random,lit:this.flags.flashOn&&this.flags.battery>0,sprinting:this.sprinting,quiet:this.keys.has('KeyC'),grace:this.grace>0,safe:atSafe,nearGoal});
+  const old=e.state,r=advancePursuer(e,this.maze,this.player,dt,{random:this.random,lit:this.flags.flashOn&&this.flags.battery>0,sprinting:this.sprinting,moving:this.moving,quiet:this.keys.has('KeyC'),grace:this.grace>0,safe:atSafe,nearGoal});
   this.marzooq.position.set(e.x,0,e.z);this.marzooq.rotation.y=e.yaw;animateCat(this.marzooq,e.phase,r.travelled/dt,dt);
   if(e.step>(r.running?1.05:.78)){if(r.distance<25)this.sounds.step(e,true,!r.los);e.step=0;}
-  if(old!=='chase'&&e.state==='chase'&&this.time>(this.tauntAfter||0)){this.sounds.voice('spotted');this.tauntAfter=this.time+22;}
+  // نفس اللحظة تعطي جملتين مختلفتين: لو كشفك بضوء الكشاف يشتكي منه، ولو لقاك في العتمة يعاكسك.
+  if(old!=='chase'&&e.state==='chase'&&this.time>(this.tauntAfter||0)){this.sounds.voice(r.cause==='light'?'spotted-light':r.cause==='dark'?'spotted-dark':'spotted');this.tauntAfter=this.time+22;}
   if(old==='chase'&&e.state==='search'&&this.time>(this.tauntAfter||0)){this.sounds.voice('lost');this.tauntAfter=this.time+20;}
   this.threat=atSafe?0:clamp(1-r.distance/18,0,1)*(e.state==='chase'?1:.55);if(r.catchable)this.catch();
   this.updateScares(dt);const lounge=cellToWorld(this.maze.lounge);if(!this.flags.events.includes('lounge')&&Math.hypot(this.player.x-lounge.x,this.player.z-lounge.z)<1.45)this.beginEvent('lounge',6);

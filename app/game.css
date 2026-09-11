@@ -32,6 +32,13 @@
 /* Graphic overlays belong to the cinematic, outside the interactive UI. */
 .ui-layer .jojo-fx,.ui-layer .manga-sfx,.ui-layer .shot-caption,.ui-layer .jojo-card{pointer-events:none}
 .jojo-fx{position:absolute;inset:0;z-index:1}.jojo-fx.time-stop{background:#427edb50;mix-blend-mode:exclusion;backdrop-filter:hue-rotate(130deg) saturate(1.7)}.jojo-fx.impact{background:#e9e6c685;mix-blend-mode:screen}.jojo-fx.sepia{background:#c88e3426;backdrop-filter:sepia(.6) contrast(1.1)}
+/* الجلدة: ومضة بيضاء حادة. الأورا: توهج ذهبي من الأطراف يترك مركز الكادر واضحًا. */
+.jojo-fx.slap{background:#fffdf2;animation:slap-flash .8s ease-out forwards}
+.jojo-fx.aura{background:radial-gradient(ellipse at 50% 62%,#ffcf6b00 34%,#ffbf4d3d 72%,#c9821f66 100%);backdrop-filter:sepia(.35) saturate(1.25) contrast(1.06)}
+@keyframes slap-flash{0%{opacity:.95}22%{opacity:.30}100%{opacity:0}}
+.reduced .jojo-fx.slap{animation:none;background:#fffdf230}
+.reduced .jojo-fx.aura{backdrop-filter:none}
+@media(prefers-reduced-motion:reduce){.jojo-fx.slap{animation:none;background:#fffdf230}}
 .manga-sfx{position:absolute;inset:21% auto auto 5%;max-width:28%;font:bold clamp(28px,5vw,75px)/1.35 Impact,'Arial Black',sans-serif;letter-spacing:3px;transform:rotate(-12deg);color:#b397ed;-webkit-text-stroke:2px #170f28;text-shadow:4px 5px #090811;z-index:2;overflow-wrap:anywhere}
 .shot-caption{position:absolute;right:4%;top:17%;font-size:13px;letter-spacing:1px;background:#0a0c10a8;color:#efddb7;padding:7px 13px;border-inline-start:2px solid #bc9a63;z-index:2}
 .jojo-card{position:absolute;left:5%;bottom:17%;z-index:4;direction:ltr;background:#dcc181;color:#181621;padding:13px 25px;font:bold clamp(19px,3vw,40px) Impact,'Arial Black',sans-serif;transform:skew(-9deg);border:3px solid #191522;box-shadow:6px 6px #090c14}.jojo-card span{padding-inline-start:18px}.reduced .jojo-fx.time-stop{backdrop-filter:none;mix-blend-mode:normal;background:#4350b222}.reduced .jojo-fx.impact{background:#f0ddac18;mix-blend-mode:normal}.reduced .manga-sfx{transform:none}.game-shell[data-mode="cinematic"] .film-grain{opacity:.035}.game-shell[data-mode="cinematic"] .scanlines{opacity:.025}

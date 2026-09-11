@@ -6,7 +6,7 @@ export class Soundscape {
  preloadNames(names){for(const name of names){if(this.samples.has(name))continue;const a=new Audio(assetURL(`/audio/${name}.mp3`));a.preload='auto';a.load?.();this.samples.set(name,a);}}
  preloadRoom(){this.releaseSamples();this.preloadNames(ROOM_VOICES);}
  preloadMaze(){this.releaseSamples();this.preloadNames([...MAZE_VOICES,'sfx-bat','sfx-mouse','sfx-blackout','sfx-power','sfx-locker','sfx-jumpscare']);}
- preloadEnding(id){this.releaseSamples();const count={truth:12,comedy:7,loop:8,secret:8}[id]||0;this.preloadNames([`ending-${id}`,...Array.from({length:count},(_,i)=>`jojo-${id}-${i}`)]);}
+ preloadEnding(id){this.releaseSamples();const count={truth:18,comedy:7,loop:8,secret:8}[id]||0;this.preloadNames([`ending-${id}`,...Array.from({length:count},(_,i)=>`jojo-${id}-${i}`)]);}
  file(name,volume=.7,voice=false){if(this.paused)return false;let original=this.samples.get(name);if(!original){original=new Audio(assetURL(`/audio/${name}.mp3`));original.preload='auto';this.samples.set(name,original);}const busy=this.voices.has(original)||this.audioEffects.has(original),a=busy&&original.cloneNode?original.cloneNode():original;a.currentTime=0;a.volume=volume*this.volume;a.muted=this.muted;const set=voice?this.voices:this.audioEffects;set.add(a);a.onended=a.onerror=()=>set.delete(a);a.play().catch(()=>set.delete(a));return true;}
  init(){
   if(this.ctx){void this.ctx.resume();return;}const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;

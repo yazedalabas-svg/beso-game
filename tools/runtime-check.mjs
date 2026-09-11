@@ -47,7 +47,8 @@ g.startBlackout();assert.equal(g.powerOut,true);assert.equal(g.mode,'event');con
 for(const [choice,ending] of [['leave','truth'],['trust','comedy'],['unknown','loop'],['control','secret']]){
  g.changeMode('choice');g.decide(choice);assert.equal(g.mode,'cinematic');assert.equal(g.ending,ending);
  // Exercise scene camera, rig updates, timeline dialogue and natural completion.
- let stamp=g.previous;for(let i=0;i<1500&&g.mode==='cinematic';i++){stamp+=50;g.update(stamp);}
+ // 50ms لكل إطار؛ العدد يغطي أطول مشهد (المواجهة ٩٣ ثانية) مع هامش.
+ let stamp=g.previous;for(let i=0;i<2400&&g.mode==='cinematic';i++){stamp+=50;g.update(stamp);}
  assert.equal(g.mode,'ending');assert.equal(snapshot.ending.label.length>0,true);g.replayCinema();assert.equal(g.mode,'cinematic');g.finishCinema();g.returnToChoice();assert.equal(g.mode,'choice');assert.equal(g.level,'maze');
 }
 assert.equal(g.unlocked.length,4);assert.ok(g.saved);assert.equal(g.scene.children.filter(o=>o===g.world).length,1);g.dispose();console.log('PASS: actual GLB skin load; room puzzle; evidence; four animated timelines; replay; return to choice; checkpoint preservation.');

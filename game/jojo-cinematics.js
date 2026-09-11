@@ -50,6 +50,9 @@ export function beginCinema(g,id){
  if(id==='truth'){
   g.mesh(4,3.7,.3,mat(0x6a625b),-2.9,1.85,4);g.mesh(4,3.7,.3,mat(0x6a625b),2.9,1.85,4);
   c.door=prop(g,'door',2.8,0,0,4);sign(g,'خارج الممرات',0,3.25,3.82,2.4).rotation.y=Math.PI;c.beso.visible=false;c.marzooq.visible=false;
+  // غلاف الأورا الذهبي حول بيسو في المشية الأخيرة — مفتوح الطرفين وبدون كتابة عمق عشان يلتف حوله لا يحجبه.
+  c.aura=new THREE.Mesh(new THREE.CylinderGeometry(.78,.3,2.9,22,1,true),new THREE.MeshBasicMaterial({color:0xffcf6b,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+  c.aura.position.y=1.45;c.aura.visible=false;g.world.add(c.aura);
  }else if(id==='comedy'){
   sign(g,'غرفة المصالحة',0,3,-3.8,4);c.beso.position.set(-1.25,0,0);c.beso.rotation.y=-Math.PI/2;c.marzooq.position.set(1.25,0,0);c.marzooq.rotation.y=Math.PI/2;
   g.mesh(1.4,.12,1.2,mat(0x66432d),0,.85,0);g.mesh(.16,.8,.16,mat(0x392e2b),0,.4,0);
@@ -64,10 +67,21 @@ export function beginCinema(g,id){
  }
  g.changeMode('cinematic');
 }
+// لحظة الجلدة. كل توقيتات الفصل الأخير مشتقة منها عشان تعديلها ما يكسر بقية المشهد.
+const SLAP=69.1,TURN=75,WALK=76.6,PUNCHLINE=86;
 function duel(g,t,dt){
  const c=g.cinemaProps,b=c.beso,m=c.marzooq;b.visible=t>=10;m.visible=t>=5;b.position.set(0,0,t<31?-2:mix(-2,-.58,ease((t-31)/11)));m.position.set(0,0,t<31?3.2:mix(3.2,1.42,ease((t-31)/11)));b.rotation.set(0,Math.PI,0);m.rotation.set(0,0,0);
- if(t>=5&&t<10)m.position.z=mix(4.2,3.2,ease((t-5)/3));if(t>=64){m.position.z=1.42+ease((t-64)/5)*2.4;m.rotation.x=-ease((t-64)/5)*.35;}if(t>=64)b.position.z=-.58-Math.min(5,t-64)*.42;
- pose(b,t>=31&&t<42?'walk':t>=47&&t<64?'guard':t>=64?'cap':'challenge',t,dt);pose(m,((t>=5&&t<10)||(t>=31&&t<42))?'walk':t>=64?'recoil':'challenge',t,dt);
+ if(t>=5&&t<10)m.position.z=mix(4.2,3.2,ease((t-5)/3));
+ // مرزوق يقترب خطوة أخيرة واثقة، ثم الجلدة تقذفه ويلف حول نفسه وينبطح على وجهه.
+ if(t>=64&&t<SLAP)m.position.z=mix(1.42,.95,ease((t-64)/5));
+ else if(t>=SLAP){const after=t-SLAP,fly=ease(Math.min(1,after/1.9));
+  m.position.z=.95+fly*2.55;m.rotation.y=fly*Math.PI*2.35;m.position.y=Math.sin(Math.min(1,after/1.5)*Math.PI)*.36;
+  if(after>1.9)m.rotation.x=-ease(Math.min(1,(after-1.9)/1.1))*Math.PI/2;}
+ // بعدها بيسو يستدير ويمشي بعيد — بدون ما يلتفت ولا مرة.
+ if(t>=TURN)b.rotation.y=mix(Math.PI,Math.PI*2,ease((t-TURN)/1.6));
+ if(t>=WALK)b.position.z=-.58-ease(Math.min(1,(t-WALK)/8))*7.1;
+ pose(b,t>=31&&t<42?'walk':t>=47&&t<67.4?'guard':t<SLAP?'wind':t<TURN?'slap':t<WALK?'cap':t<PUNCHLINE?'walk':'cap',t,dt);
+ pose(m,((t>=5&&t<10)||(t>=31&&t<42))?'walk':t<SLAP?'challenge':t<SLAP+3.9?'recoil':'plead',t,dt);
  if(t<5){camera(g,[.08,1.65,4.6-t*.72],[0,1.55,-9],66);if(c.door)c.door.rotation.y=-ease(t/2)*1.5;g.cinemaCaption='خارج الباب / خطوات خلف بيسو';}
  else if(t<10){const angle=ease(clamp((t-5)/1.4))*Math.PI;camera(g,[0,1.65,.65],[Math.sin(angle)*2.2,1.62,.65-Math.cos(angle)*5],62);g.cinemaCaption='مرزوق خرج خلفه';}
  else if(t<17){camera(g,[.78,1.72,1.0],[0,1.7,3.2],36);g.cinemaGraphic='ゴゴゴ';g.cinemaCaption='مرزوق';}
@@ -77,12 +91,26 @@ function duel(g,t,dt){
  else if(t<47){camera(g,[.88,1.74,-.05],[0,1.67,1.42],38);g.cinemaGraphic='THE WORLD';g.cinemaCaption='الزمن يتوقف';g.cinemaFx='time-stop';}
  else if(t<52){camera(g,[-.82,1.72,1.15],[0,1.68,-.58],39);g.cinemaGraphic='STAR BESO';g.cinemaFx='time-stop';}
  else if(t<64){camera(g,[4.35,1.72,.55],[0,1.24,.36],51);g.cinemaCaption='اختبار القوة';g.cinemaGraphic=t<58?'MUDA MUDA':'ORA ORA';if(!g.settings.reduced){g.camera.position.y+=Math.sin(t*77)*.025;g.camera.rotation.z=Math.sin(t*57)*.012;}if(t>=62&&t<62.5)g.cinemaFx='impact';}
- else{const middle=(b.position.z+m.position.z)/2;camera(g,[6.9,2.05,middle],[0,1.2,middle],60);g.cinemaFx='sepia';g.cinemaCard='TO BE CONTINUED';g.cinemaCaption='بيسو اختار طريقه.';}
- c.star.visible=c.world.visible=t>=46&&t<66;c.star.position.set(.55,0,b.position.z+.35);c.star.rotation.y=Math.PI;c.world.position.set(-.55,0,m.position.z-.35);c.world.rotation.y=0;
- pose(c.star,t>=52&&t<64?'punch':'guard',t,dt);pose(c.world,t>=52&&t<62?'punch':'recoil',t+.1,dt);
- for(let i=0;i<3;i++){const ring=c.rings[i],active=(t>=42&&t<52)||(t>=52&&t<64);ring.material.opacity=active?.5:0;ring.scale.setScalar(.6+((t*(t<52?.8:2)+i*.33)%1)*2.8);ring.lookAt(g.camera.position);}
- if(((t>=5&&t<10)||(t>=31&&t<42))&&Math.floor(t*1.7)!==g.cinemaStep){g.cinemaStep=Math.floor(t*1.7);g.sounds.step(m.position,true);}
+ else if(t<67.4){camera(g,[2.75,1.80,.05],[0,1.66,1.05],40);g.cinemaGraphic='ゴゴゴゴ';g.cinemaCaption='خطوة أخيرة واثقة';}
+ // لقطة جانبية للاثنين: لازم الذراع المسحوبة ورأس مرزوق يبينان في نفس الكادر.
+ else if(t<SLAP){camera(g,[2.95,1.76,.12],[0,1.62,.2],42);g.cinemaGraphic='ゴゴゴゴゴ';g.cinemaCaption='بيسو رفع يده';g.cinemaFx='time-stop';}
+ else if(t<SLAP+.8){camera(g,[2.45,1.70,.42],[0,1.58,.32],38);g.cinemaGraphic='パシィン';g.cinemaCard='جلدة واحدة';g.cinemaCaption='بيسو ما رد بالكلام';g.cinemaFx='slap';if(!g.settings.reduced){g.camera.position.x+=Math.sin(t*151)*.07;g.camera.position.y+=Math.cos(t*133)*.055;g.camera.rotation.z=Math.sin(t*109)*.055;}}
+ else if(t<TURN){camera(g,[4.7,1.95,1.9],[0,1.05,2.4],52);g.cinemaGraphic='ゴゴゴ';g.cinemaCaption='مرزوق طار';if(t<SLAP+1.3)g.cinemaFx='impact';}
+ else if(t<PUNCHLINE){camera(g,[.32,1.50,b.position.z-3.3],[0,1.44,b.position.z],42);g.cinemaFx='aura';g.cinemaGraphic='ゴゴゴゴゴ';g.cinemaCaption='ومشى بيسو · ولا التفت';}
+ else{camera(g,[1.55,.44,5.1],[0,.34,2.8],56);g.cinemaFx='sepia';g.cinemaCard=t<90?'وصّلني البيت':'TO BE CONTINUED';g.cinemaCaption='مرزوق على الأرض · ندم مؤقت';}
+ c.star.visible=t>=46&&t<SLAP+1.2;c.world.visible=t>=46&&t<SLAP+.2;c.star.position.set(.55,0,b.position.z+.35);c.star.rotation.y=Math.PI;c.world.position.set(-.55,0,m.position.z-.35);c.world.rotation.y=0;
+ pose(c.star,t>=SLAP?'slap':t>=67.4?'wind':t>=52&&t<64?'punch':'guard',t,dt);pose(c.world,t>=52&&t<62?'punch':'recoil',t+.1,dt);
+ // الأورا: أسطوانة ذهبية شفافة حول بيسو + حلقات تصعد لفوق أثناء المشية الأخيرة.
+ // تخفت مع بداية الإغلاق الكوميدي: بيسو صار بعيد والنكتة ما تحتاج توهجًا ذهبيًا فوقها.
+ const aura=t>=TURN?clamp((t-TURN)/2.2)*(t>=PUNCHLINE?clamp(1-(t-PUNCHLINE)/2.5):1):0;
+ if(c.aura){c.aura.visible=aura>0;c.aura.material.opacity=aura*.3;c.aura.position.set(b.position.x,1.45+Math.sin(t*4)*.05,b.position.z);c.aura.rotation.y=t*1.6;c.aura.scale.set(1+Math.sin(t*6)*.06,1,1+Math.cos(t*6)*.06);}
+ for(let i=0;i<3;i++){const ring=c.rings[i],rise=(t*1.5+i*.33)%1;
+  if(aura>0){ring.material.color.setHex(0xffd070);ring.material.opacity=aura*.6*(1-rise);ring.position.set(b.position.x,.3+rise*2.5,b.position.z);ring.scale.setScalar(.9+rise*.8);ring.rotation.set(Math.PI/2,0,0);}
+  else{ring.material.opacity=t>=42&&t<64?.5:0;ring.position.set(0,1.3,.3);ring.scale.setScalar(.6+((t*(t<52?.8:2)+i*.33)%1)*2.8);ring.lookAt(g.camera.position);}}
+ const stepping=(t>=5&&t<10)||(t>=31&&t<42)||(t>=WALK&&t<PUNCHLINE);
+ if(stepping&&Math.floor(t*1.7)!==g.cinemaStep){g.cinemaStep=Math.floor(t*1.7);g.sounds.step(t>=WALK?b.position:m.position,t<WALK);}
  if(t>=52&&t<64&&Math.floor(t*9)!==g.cinemaHit){g.cinemaHit=Math.floor(t*9);g.sounds.impact(t<58?'gold':'violet',g.settings.reduced);}
+ if(t>=SLAP&&!c.slapped){c.slapped=true;g.sounds.timeStop();g.sounds.impact('gold',g.settings.reduced);g.sounds.scare(g.settings.reduced);}
 }
 function cafe(g,t,dt){
  const c=g.cinemaProps;pose(c.beso,t<16?'guard':t<27?'recoil':'challenge',t,dt);pose(c.marzooq,t<21?'challenge':'jojo',t,dt);

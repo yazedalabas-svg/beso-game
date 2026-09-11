@@ -58,6 +58,23 @@ export function pose(root,kind,t,dt=1/60){
   rotate(root,'chest',-.22,0,.13);rotate(root,'head',-.18);rotate(root,'upper_arm.L',-.9,0,.7);rotate(root,'upper_arm.R',-.9,0,-.7);
  }else if(kind==='cap'){
   rotate(root,'upper_arm.R',-1.7,0,-.45);rotate(root,'forearm.R',-1.6);rotate(root,'head',.12,0,-.1);
+ }else if(kind==='wind'){
+  // الذراع مسحوبة خلف الكتف واللفة كلها محمّلة على الخصر: الإطار اللي قبل الجلدة.
+  rotate(root,'chest',0,.52,-.12);rotate(root,'pelvis',0,.22,0);rotate(root,'head',0,.30,-.14);
+  rotate(root,'upper_arm.R',-.55,-1.15,-1.05);rotate(root,'forearm.R',-.45);rotate(root,'hand.R',0,0,-.3);
+  rotate(root,'upper_arm.L',-.35,.25,.55);rotate(root,'forearm.L',-.7);
+ }else if(kind==='slap'){
+  // المتابعة بعد الضربة: اللفة انفكّت للجهة الثانية والذراع عبرت الجسم كاملة.
+  rotate(root,'chest',0,-.46,.14);rotate(root,'pelvis',0,-.20,0);rotate(root,'head',.05,-.26,.16);
+  rotate(root,'upper_arm.R',-1.15,.95,.85);rotate(root,'forearm.R',-.30);rotate(root,'hand.R',0,0,.35);
+  rotate(root,'upper_arm.L',-.30,-.2,-.62);rotate(root,'forearm.L',-.95);
+ }else if(kind==='plead'){
+  // منبطح على وجهه ويرفع يدًا واحدة: وضعية الإغلاق الكوميدي.
+  const lift=.5+Math.sin(t*1.6)*.5;
+  rotate(root,'chest',.30,0,0);rotate(root,'head',.55,.2,0);
+  rotate(root,'upper_arm.R',-1.05-lift*.75,0,-.35);rotate(root,'forearm.R',-.5+lift*.35);
+  rotate(root,'upper_arm.L',.35,0,.9);rotate(root,'forearm.L',-.45);
+  rotate(root,'thigh.L',.12,0,.2);rotate(root,'thigh.R',.12,0,-.2);
  }else if(kind==='jojo'){
   rotate(root,'chest',0,.2,-.14);rotate(root,'upper_arm.L',-1.7,0,.85);rotate(root,'forearm.L',-1.1);rotate(root,'upper_arm.R',-.5,0,-.65);rotate(root,'forearm.R',-1.4);rotate(root,'head',0,-.2,.16);
  }
