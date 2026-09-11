@@ -8,7 +8,7 @@ const ease=v=>{v=clamp(v);return v*v*(3-2*v);};
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.8,...extra});
 function camera(g,position,target,fov=48){g.camera.position.set(...position);g.camera.lookAt(...target);if(g.camera.fov!==fov){g.camera.fov=fov;g.camera.updateProjectionMatrix();}}
 function sign(g,text,x,y,z,width=3,bg='#17211f',fg='#f4df9d'){const s=g.sign(text,width,.45,bg,fg);s.position.set(x,y,z);g.world.add(s);return s;}
-function prop(g,name,height,x,y,z){const o=g.assets.model(name,height);if(o){o.position.set(x,y,z);g.world.add(o);}return o;}
+function prop(g,name,height,x,y,z,parent=g.world){const o=g.assets.model(name,height);if(o){o.position.set(x,y,z);parent.add(o);}return o;}
 const glow=(color,intensity)=>mat(color,{emissive:color,emissiveIntensity:intensity});
 // شارع ليلي قبل الفجر: قمر منخفض، أفق بعيد، أعمدة إنارة ترمي برك ضوء على إسفلت مبلول.
 function street(g){
@@ -110,7 +110,17 @@ export function beginCinema(g,id){
  const key=new THREE.PointLight(id==='loop'?0xe3e6bd:0xffddb0,24,13);key.position.set(1,3,1);g.world.add(key);c.light=key;
  if(id==='truth'){
   g.mesh(4,3.7,.3,mat(0x6a625b),-2.9,1.85,4);g.mesh(4,3.7,.3,mat(0x6a625b),2.9,1.85,4);
-  c.door=prop(g,'door',2.8,0,0,4);sign(g,'خارج الممرات',0,3.25,3.82,2.4).rotation.y=Math.PI;c.beso.visible=false;c.marzooq.visible=false;
+  // بابه كان يدور حول مركزه، لا حول مفصلته — فيطلع كأنه عمود رفيع يلف في نص الفتحة بدل
+  // ما ينفتح على الجدار زي باب حقيقي. نفس أسلوب doorHinge المستعمل بغرفة بيسو: مجموعة
+  // عند حافة المفصلة، والباب نفسه مزاح داخلها بنص عرضه (~.66م لموديل بعرض ~1.32م).
+  c.doorHinge=new THREE.Group();c.doorHinge.position.set(-.66,0,4);g.world.add(c.doorHinge);
+  c.door=prop(g,'door',2.8,.66,0,0,c.doorHinge);
+  sign(g,'خارج الممرات',0,3.25,3.82,2.4).rotation.y=Math.PI;c.beso.visible=false;c.marzooq.visible=false;
+  // ممر باك رومز قصير يظهر عبر فتحة الباب — عشان يبين إن بيسو طلع فعلاً من مكان، لا من عدم.
+  const brWall=mat(0x8d8352,{roughness:.92}),brFloor=mat(0x746a3e,{roughness:.95}),brCeil=mat(0x4d4a2e);
+  g.mesh(1.8,.06,6,brFloor,0,-.03,7);g.mesh(1.8,.06,6,brCeil,0,3.58,7);
+  for(const side of [-1,1])g.mesh(.06,3.6,6,brWall,side*.9,1.78,7);
+  for(let i=0;i<3;i++){const z=4.6+i*1.8;g.mesh(.9,.05,.32,mat(0xe8e8b4,{emissive:0xe8e8b4,emissiveIntensity:i===1?.15:1}),0,3.5,z);const l=new THREE.PointLight(0xeee6a0,i===1?1.2:4.5,5);l.position.set(0,3.2,z);g.world.add(l);}
   // غلاف الأورا الذهبي حول بيسو في المشية الأخيرة — مفتوح الطرفين وبدون كتابة عمق عشان يلتف حوله لا يحجبه.
   c.aura=new THREE.Mesh(new THREE.CylinderGeometry(.78,.3,2.9,22,1,true),new THREE.MeshBasicMaterial({color:0xffcf6b,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
   c.aura.position.y=1.45;c.aura.visible=false;g.world.add(c.aura);
@@ -129,7 +139,9 @@ export function beginCinema(g,id){
   for(let i=0;i<3;i++){const mon=prop(g,'monitor',.65,-1.3+i*1.3,.92,-2.7);if(mon)mon.rotation.y=Math.PI;}
   g.mesh(.9,.1,.85,mat(0x33393b),1.1,.46,-1.5).rotation.z=.42;
   g.mesh(.07,.55,.07,mat(0x22282a),1.1,.2,-1.5);
-  c.door=prop(g,'door',2.75,0,0,4.4);
+  // نفس تصحيح المفصلة: الباب يدور حول حافته لا حول مركزه.
+  c.doorHinge=new THREE.Group();c.doorHinge.position.set(-.66,0,4.4);g.world.add(c.doorHinge);
+  c.door=prop(g,'door',2.75,.66,0,0,c.doorHinge);
   g.mesh(1.5,2.95,.16,mat(0x353d3f),0,1.48,4.55); // إطار الباب المعدني
   c.beso.position.set(-.8,0,0);c.beso.rotation.y=Math.PI;c.marzooq.position.set(.9,0,-.4);c.marzooq.rotation.y=Math.PI;
   c.entity=c.world;c.entity.visible=false;c.entity.position.set(0,0,5.2);c.entity.scale.setScalar(1.4);
@@ -160,7 +172,7 @@ function duel(g,t,dt){
  if(t>=WALK)b.position.z=-.58-ease(Math.min(1,(t-WALK)/8))*7.1;
  pose(b,t>=31&&t<39?'walk':t>=39&&t<45?'faceoff':t>=47&&t<67.4?'guard':t<SLAP?'wind':t<TURN?'slap':t<WALK?'cap':t<PUNCHLINE?'walk':'cap',t,dt);
  pose(m,((t>=5&&t<10)||(t>=31&&t<39))?'walk':(t>=39&&t<45)?'faceoff':t<SLAP?'challenge':t<SLAP+3.9?'recoil':'plead',t,dt);
- if(t<5){camera(g,[.08,1.65,4.6-t*.72],[0,1.55,-9],66);if(c.door)c.door.rotation.y=-ease(t/2)*1.5;g.cinemaCaption='خارج الباب / خطوات خلف بيسو';}
+ if(t<5){camera(g,[.08,1.65,4.6-t*.72],[0,1.55,-9],66);if(c.doorHinge)c.doorHinge.rotation.y=-ease(t/2)*1.5;g.cinemaCaption='خارج الباب / خطوات خلف بيسو';}
  else if(t<10){const angle=ease(clamp((t-5)/1.4))*Math.PI;camera(g,[0,1.65,.65],[Math.sin(angle)*2.2,1.62,.65-Math.cos(angle)*5],62);g.cinemaCaption='مرزوق خرج خلفه';}
  else if(t<17){camera(g,[.78,1.72,1.0],[0,1.7,3.2],36);g.cinemaGraphic='ゴゴゴ';g.cinemaCaption='مرزوق';}
  else if(t<24){camera(g,[-.78,1.7,.2],[0,1.72,-2],37);g.cinemaCaption='بيسو';}
@@ -228,7 +240,7 @@ function partner(g,t,dt){
  const c=g.cinemaProps;
  pose(c.beso,t<20?'guard':t<31?'faceoff':'walk',t,dt);pose(c.marzooq,t<20?'recoil':t<31?'challenge':'walk',t,dt);
  c.entity.visible=t<8;c.entity.position.z=5.2+Math.sin(t*.5)*.18;
- if(c.door&&t>=35)c.door.rotation.y=-ease((t-35)/3)*1.15;
+ if(c.doorHinge&&t>=35)c.doorHinge.rotation.y=-ease((t-35)/3)*1.15;
  // من خلف كتفيهما نحو الشاشات: الزحف السابق كان ينتهي عند z=.15 — بين الممثلين تمامًا.
  if(t<5){const d=ease(t/5);camera(g,[.05,mix(1.90,1.72,d),mix(4.1,2.8,d)],[0,1.32,-2.7],mix(62,54,d));g.cinemaCaption='التسجيل الأخير';g.cinemaGraphic='REC 017';}
  // زحف للأمام من خلف الاثنين باتجاه الباب: الكادر السابق كان واقفًا عند الباب ويطالع
